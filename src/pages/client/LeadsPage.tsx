@@ -33,7 +33,7 @@ import {
   Users, Plus, MoreVertical, LayoutGrid, TableIcon, Search,
   Download, Phone, Mail, Star, GripVertical, X, CalendarIcon,
   TrendingUp, Target, Bell, Edit, Trash2, Eye, Headphones,
-  ArrowRight,
+  ArrowRight, Flame, Snowflake, Sun, AlertTriangle, Clock,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -110,6 +110,46 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: "✍️ Manual",
 };
 
+/* ─── Temperature Classification ─── */
+const TEMPERATURE_CONFIG = {
+  hot:  { label: "Hot",  color: "bg-red-500/15 text-red-600 border-red-500/30", dotColor: "bg-red-500", icon: Flame,     min: 71, max: 100 },
+  warm: { label: "Warm", color: "bg-amber-500/15 text-amber-600 border-amber-500/30", dotColor: "bg-amber-500", icon: Sun,       min: 40, max: 70  },
+  cold: { label: "Cold", color: "bg-blue-500/15 text-blue-600 border-blue-500/30", dotColor: "bg-blue-500", icon: Snowflake, min: 0,  max: 39  },
+} as const;
+
+type TemperatureKey = keyof typeof TEMPERATURE_CONFIG;
+
+function getLeadTemperature(score: number | null): TemperatureKey {
+  const s = score ?? 0;
+  if (s > 70) return "hot";
+  if (s >= 40) return "warm";
+  return "cold";
+}
+
+function TemperatureBadge({ score, size = "sm" }: { score: number | null; size?: "sm" | "md" }) {
+  const temp = getLeadTemperature(score);
+  const config = TEMPERATURE_CONFIG[temp];
+  const Icon = config.icon;
+  const isMd = size === "md";
+  return (
+    <Badge variant="outline" className={cn(
+      "gap-1 font-semibold border",
+      config.color,
+      isMd ? "text-xs px-2.5 py-1" : "text-[10px] px-1.5 py-0.5"
+    )}>
+      <Icon className={isMd ? "h-3.5 w-3.5" : "h-3 w-3"} />
+      {config.label}
+    </Badge>
+  );
+}
+
+function isLeadStale(lead: Lead): boolean {
+  if (lead.status !== "new") return false;
+  const created = new Date(lead.created_at);
+  const daysSince = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince > 7;
+}
+
 const emptyForm: LeadFormData = {
   name: "", company: "", phone: "", email: "",
   lead_source: "manual", lead_score: 50, interest_level: 5,
@@ -132,6 +172,7 @@ export default function LeadsPage() {
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [scoreRange, setScoreRange] = useState([0, 100]);
   const [dateFilter, setDateFilter] = useState("all");
+  const [temperatureFilter, setTemperatureFilter] = useState<"all" | TemperatureKey>("all");
 
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -206,14 +247,24 @@ export default function LeadsPage() {
     return {
       total: leads.length,
       newThisWeek: leads.filter(l => new Date(l.created_at) >= weekAgo).length,
-      hot: leads.filter(l => (l.lead_score || 0) > 70).length,
+      hot: leads.filter(l => getLeadTemperature(l.lead_score) === "hot").length,
+      warm: leads.filter(l => getLeadTemperature(l.lead_score) === "warm").length,
+      cold: leads.filter(l => getLeadTemperature(l.lead_score) === "cold").length,
       followUpsToday: leads.filter(l => l.follow_up_date === todayStr).length,
+      stale: leads.filter(isLeadStale).length,
+      untouched: leads.filter(l => l.status === "new" && !l.notes && !l.follow_up_date).length,
     };
   }, [leads]);
 
+  // Apply temperature filter client-side
+  const filteredLeads = useMemo(() => {
+    if (temperatureFilter === "all") return leads;
+    return leads.filter(l => getLeadTemperature(l.lead_score) === temperatureFilter);
+  }, [leads, temperatureFilter]);
+
   const clearFilters = () => {
     setSearch(""); setSourceFilter("all"); setStatusFilters([]);
-    setScoreRange([0, 100]); setDateFilter("all");
+    setScoreRange([0, 100]); setDateFilter("all"); setTemperatureFilter("all");
   };
 
   const updateLeadStatus = async (leadId: string, newStatus: string) => {
@@ -295,10 +346,40 @@ export default function LeadsPage() {
   if (contextLoading) return <PageSkeleton />;
   if (!client) return <Navigate to="/client" replace />;
 
-  const hasActiveFilters = debouncedSearch || sourceFilter !== "all" || statusFilters.length > 0 || scoreRange[0] > 0 || scoreRange[1] < 100 || dateFilter !== "all";
+  const hasActiveFilters = debouncedSearch || sourceFilter !== "all" || statusFilters.length > 0 || scoreRange[0] > 0 || scoreRange[1] < 100 || dateFilter !== "all" || temperatureFilter !== "all";
 
   return (
     <div className="space-y-6">
+      {/* Auto-Insights Banner */}
+      {(stats.hot > 0 || stats.stale > 0 || stats.untouched > 0) && (
+        <div className="rounded-xl border bg-gradient-to-r from-red-500/5 via-amber-500/5 to-blue-500/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-semibold text-foreground">Auto Insights</h3>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {stats.hot > 0 && (
+              <button onClick={() => setTemperatureFilter("hot")} className="flex items-center gap-1.5 text-xs bg-red-500/10 text-red-600 rounded-lg px-3 py-1.5 hover:bg-red-500/20 transition-colors">
+                <Flame className="h-3 w-3" />
+                <strong>{stats.hot}</strong> hot lead{stats.hot > 1 ? "s" : ""} need attention
+              </button>
+            )}
+            {stats.stale > 0 && (
+              <div className="flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-600 rounded-lg px-3 py-1.5">
+                <Clock className="h-3 w-3" />
+                <strong>{stats.stale}</strong> lead{stats.stale > 1 ? "s" : ""} stale for 7+ days
+              </div>
+            )}
+            {stats.untouched > 0 && (
+              <div className="flex items-center gap-1.5 text-xs bg-blue-500/10 text-blue-600 rounded-lg px-3 py-1.5">
+                <Snowflake className="h-3 w-3" />
+                <strong>{stats.untouched}</strong> lead{stats.untouched > 1 ? "s" : ""} untouched
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Follow-up banner */}
       {stats.followUpsToday > 0 && (
         <div className="rounded-lg border bg-accent p-3 flex items-center justify-between">
@@ -333,8 +414,24 @@ export default function LeadsPage() {
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         <MiniStat label="Total Leads" value={stats.total} icon={<Users className="h-4 w-4" />} />
         <MiniStat label="New This Week" value={stats.newThisWeek} icon={<TrendingUp className="h-4 w-4" />} />
-        <MiniStat label="Hot Leads (>70)" value={stats.hot} icon={<Target className="h-4 w-4" />} />
         <MiniStat label="Follow-ups Today" value={stats.followUpsToday} icon={<Bell className="h-4 w-4" />} />
+        <div className="grid grid-cols-3 gap-1.5">
+          <button onClick={() => setTemperatureFilter("hot")} className={cn("rounded-lg border p-2 text-center transition-all hover:shadow-sm", temperatureFilter === "hot" ? "ring-2 ring-red-500/50 bg-red-500/10" : "")}>
+            <Flame className="h-3.5 w-3.5 text-red-500 mx-auto mb-0.5" />
+            <p className="text-lg font-bold text-red-600">{stats.hot}</p>
+            <p className="text-[9px] text-muted-foreground">Hot</p>
+          </button>
+          <button onClick={() => setTemperatureFilter("warm")} className={cn("rounded-lg border p-2 text-center transition-all hover:shadow-sm", temperatureFilter === "warm" ? "ring-2 ring-amber-500/50 bg-amber-500/10" : "")}>
+            <Sun className="h-3.5 w-3.5 text-amber-500 mx-auto mb-0.5" />
+            <p className="text-lg font-bold text-amber-600">{stats.warm}</p>
+            <p className="text-[9px] text-muted-foreground">Warm</p>
+          </button>
+          <button onClick={() => setTemperatureFilter("cold")} className={cn("rounded-lg border p-2 text-center transition-all hover:shadow-sm", temperatureFilter === "cold" ? "ring-2 ring-blue-500/50 bg-blue-500/10" : "")}>
+            <Snowflake className="h-3.5 w-3.5 text-blue-500 mx-auto mb-0.5" />
+            <p className="text-lg font-bold text-blue-600">{stats.cold}</p>
+            <p className="text-[9px] text-muted-foreground">Cold</p>
+          </button>
+        </div>
       </div>
 
       {/* Filters + View Toggle */}
@@ -353,6 +450,15 @@ export default function LeadsPage() {
               <SelectItem value="voice_agent">Voice Agent</SelectItem>
               <SelectItem value="receptionist">Receptionist</SelectItem>
               <SelectItem value="manual">Manual</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={temperatureFilter} onValueChange={v => setTemperatureFilter(v as any)}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Temperature" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Temps</SelectItem>
+              <SelectItem value="hot">🔥 Hot</SelectItem>
+              <SelectItem value="warm">🌤️ Warm</SelectItem>
+              <SelectItem value="cold">❄️ Cold</SelectItem>
             </SelectContent>
           </Select>
           <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -383,7 +489,7 @@ export default function LeadsPage() {
       </div>
 
       {/* Content */}
-      {isLoading ? <PageSkeleton /> : leads.length === 0 && !hasActiveFilters ? (
+      {isLoading ? <PageSkeleton /> : filteredLeads.length === 0 && !hasActiveFilters ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="rounded-full bg-muted p-5 mb-4"><Users className="h-10 w-10 text-muted-foreground" /></div>
@@ -396,11 +502,11 @@ export default function LeadsPage() {
           </CardContent>
         </Card>
       ) : view === "kanban" ? (
-        <KanbanView leads={leads} onStatusChange={updateLeadStatus}
+        <KanbanView leads={filteredLeads} onStatusChange={updateLeadStatus}
           onViewDetail={setDetailLead} onEdit={setEditLead} onDelete={setDeleteConfirm}
           onAddLead={() => setAddModalOpen(true)} />
       ) : (
-        <TableView leads={leads} selectedIds={selectedIds} setSelectedIds={setSelectedIds}
+        <TableView leads={filteredLeads} selectedIds={selectedIds} setSelectedIds={setSelectedIds}
           onViewDetail={setDetailLead} onEdit={setEditLead} onDelete={setDeleteConfirm}
           onStatusChange={updateLeadStatus} />
       )}
@@ -547,8 +653,16 @@ function KanbanCard({ lead, onView, onEdit, onDelete, onStatusChange }: {
         <div className="flex-1 min-w-0" {...listeners}>
           <GripVertical className="h-3 w-3 text-muted-foreground inline mr-1" />
         </div>
-        <Badge className={cn("text-[10px] px-1.5", scoreColor)}>{score}/100</Badge>
+        <div className="flex items-center gap-1">
+          <TemperatureBadge score={lead.lead_score} />
+          <Badge className={cn("text-[10px] px-1.5", scoreColor)}>{score}/100</Badge>
+        </div>
       </div>
+      {isLeadStale(lead) && (
+        <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-500/10 rounded px-1.5 py-0.5 mb-1">
+          <Clock className="h-2.5 w-2.5" /> Stale — no activity for 7+ days
+        </div>
+      )}
       <h4 className="font-semibold text-sm truncate">{lead.name || "Unknown"}</h4>
       {lead.company && <p className="text-xs text-muted-foreground truncate">{lead.company}</p>}
       <div className="mt-2 space-y-1">
@@ -647,6 +761,7 @@ function TableView({ leads, selectedIds, setSelectedIds, onViewDetail, onEdit, o
               </TableHead>
               <TableHead>Lead</TableHead>
               <TableHead>Score</TableHead>
+              <TableHead>Temp</TableHead>
               <TableHead>Interest</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Source</TableHead>
@@ -685,6 +800,7 @@ function TableView({ leads, selectedIds, setSelectedIds, onViewDetail, onEdit, o
                     </div>
                   </TableCell>
                   <TableCell><Badge className={cn("text-xs", scoreColor)}>{score}/100</Badge></TableCell>
+                  <TableCell><TemperatureBadge score={lead.lead_score} /></TableCell>
                   <TableCell>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map(i => (
@@ -947,7 +1063,10 @@ function LeadDetailPanel({ lead, onClose, onEdit, onDelete, onStatusChange, onNo
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between pr-8">
             <span>{lead.name || "Unknown Lead"}</span>
-            <Badge className={cn("text-xs", scoreColor)}>{score}/100</Badge>
+            <div className="flex items-center gap-1.5">
+              <TemperatureBadge score={lead.lead_score} size="md" />
+              <Badge className={cn("text-xs", scoreColor)}>{score}/100</Badge>
+            </div>
           </DialogTitle>
           <DialogDescription>{lead.company || "No company"}</DialogDescription>
         </DialogHeader>

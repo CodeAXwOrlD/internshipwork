@@ -20,7 +20,7 @@ import {
   Star,
   Plus
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -266,7 +266,7 @@ export default function LiveChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] overflow-hidden rounded-3xl bg-white/50 backdrop-blur-xl border border-primary/10 shadow-2xl">
+    <div className="flex h-[calc(100vh-120px)] overflow-hidden rounded-3xl bg-white/50 bg-opacity-95 border border-primary/10 shadow-2xl">
       
       {/* 1. Sidebar: Chat List */}
       <div className="w-80 flex flex-col border-r border-sidebar-border/10 bg-white/30">
@@ -303,19 +303,19 @@ export default function LiveChatPage() {
                </div>
              ) : (
              chats.map((chat) => (
-              <motion.div
+              <div
                 key={chat.id}
-                whileHover={{ x: 4 }}
+                
                 onClick={() => setSelectedChat(chat)}
                 className={cn(
-                  "p-3 rounded-2xl cursor-pointer transition-all flex items-center gap-3 relative overflow-hidden group",
+                  "p-3 rounded-2xl cursor-pointer transition-colors flex items-center gap-3 relative overflow-hidden group",
                   selectedChat?.id === chat.id 
                     ? "bg-white shadow-md border border-primary/10" 
                     : "hover:bg-white/40"
                 )}
               >
                 {selectedChat?.id === chat.id && (
-                  <motion.div 
+                  <div 
                     layoutId="chat-indicator"
                     className="absolute left-0 top-0 bottom-0 w-1 bg-primary" 
                   />
@@ -345,7 +345,7 @@ export default function LiveChatPage() {
                     ))}
                   </div>
                 </div>
-              </motion.div>
+              </div>
              ))
             )}
           </div>
@@ -393,9 +393,9 @@ export default function LiveChatPage() {
                   <span className="text-[10px] font-bold text-slate-400 border border-slate-100 rounded-full px-3 py-1 uppercase tracking-widest bg-white/30">Conversation started today</span>
                 </div>
 
-                <AnimatePresence>
+                
                   {chatMessages.map((msg) => (
-                    <motion.div
+                    <div
                       key={msg.id}
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -413,7 +413,7 @@ export default function LiveChatPage() {
                             : "bg-slate-800 text-white rounded-tr-none shadow-lg shadow-black/10"
                       )}>
                         {msg.isAI && (
-                          <div className="absolute -top-3 -right-2 bg-white/20 backdrop-blur-md rounded-full p-1 border border-white/20 shadow-sm">
+                          <div className="absolute -top-3 -right-2 bg-white/20 bg-opacity-90 rounded-full p-1 border border-white/20 shadow-sm">
                             <Bot className="h-3 w-3 text-white" />
                           </div>
                         )}
@@ -423,17 +423,17 @@ export default function LiveChatPage() {
                         <span className="text-[9px] font-bold text-slate-400">{msg.time}</span>
                         {msg.sender !== "customer" && <CheckCheck className="w-3 h-3 text-primary" />}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                   
                   {isLoading && (
-                    <motion.div
+                    <div
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       className="flex flex-col max-w-[80%] ml-auto items-end"
                     >
                       <div className="relative p-4 rounded-3xl text-sm leading-relaxed shadow-sm bg-gradient-to-br from-primary/90 to-primary text-white rounded-tr-none shadow-lg shadow-primary/10">
-                        <div className="absolute -top-3 -right-2 bg-white/20 backdrop-blur-md rounded-full p-1 border border-white/20 shadow-sm">
+                        <div className="absolute -top-3 -right-2 bg-white/20 bg-opacity-90 rounded-full p-1 border border-white/20 shadow-sm">
                           <Sparkles className="h-3 w-3 text-white animate-spin" />
                         </div>
                         <div className="flex gap-1 items-center h-5">
@@ -442,9 +442,9 @@ export default function LiveChatPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
+                
               </div>
             </ScrollArea>
 

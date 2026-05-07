@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  MessageSquare, Search, User, Check, CheckCheck, 
+  MessageSquare, Search, User, Check, CheckCheck,  
   AlertCircle, ChevronRight, Info, Filter, Clock, Shield
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -62,7 +62,7 @@ export default function WhatsAppHistoryPage() {
   if (isBotsLoading) return <div className="p-8 space-y-6"><Skeleton className="h-10 w-64" /><Skeleton className="h-[400px] w-full rounded-2xl" /></div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
@@ -85,41 +85,41 @@ export default function WhatsAppHistoryPage() {
         </div>
       </div>
 
-      <Card className="border-white/10 bg-card/30 backdrop-blur-xl shadow-2xl rounded-[2rem] overflow-hidden">
-        <CardHeader className="border-b border-white/5 bg-white/5 px-8 py-6">
+      <Card className="border-none bg-white/40 shadow-sm rounded-[2rem] overflow-hidden">
+        <CardHeader className="border-none px-8 py-6 pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-bold">Activity Log</CardTitle>
-            <Badge variant="secondary" className="px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">{filteredMessages.length} Messages</Badge>
+            <CardTitle className="text-xl font-bold text-slate-900">Activity Log</CardTitle>
+            <Badge variant="secondary" className="px-3 py-1 rounded-full text-xs font-bold bg-[#D3E4FF] text-[#0052CC] border-none">{filteredMessages.length} Messages</Badge>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="h-[600px]">
-            {isMsgsLoading ? <div className="p-8 space-y-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div> : filteredMessages.length > 0 ? (
-              <div className="divide-y divide-white/5">
+            {isMsgsLoading ? <div className="p-8 space-y-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full bg-white/50" />)}</div> : filteredMessages.length > 0 ? (
+              <div className="divide-y divide-slate-200/50">
                 {filteredMessages.map((msg: any) => (
-                  <div key={msg.id} className="group p-6 hover:bg-white/5 transition-all duration-300 flex items-start gap-6">
-                    <div className="flex flex-col items-center gap-2"><div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center"><User className="h-6 w-6 text-primary" /></div>{getStatusIcon(msg.status)}</div>
+                  <div key={msg.id} className="group p-6 hover:bg-white/50 transition-colors duration-200 flex items-start gap-6">
+                    <div className="flex flex-col items-center gap-2"><div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center shadow-sm"><User className="h-6 w-6 text-slate-700" /></div>{getStatusIcon(msg.status)}</div>
                     <div className="flex-1 min-w-0 space-y-2">
                        <div className="flex items-center justify-between gap-4">
-                         <span className="font-bold text-lg text-foreground">+{msg.phone_number}</span>
-                         <span className="text-xs font-mono text-muted-foreground">{format(new Date(msg.sent_at), "MMM d, HH:mm:ss")}</span>
+                         <span className="font-bold text-lg text-slate-900">+{msg.phone_number}</span>
+                         <span className="text-xs font-mono text-slate-500">{format(new Date(msg.sent_at), "MMM d, HH:mm:ss")}</span>
                        </div>
-                       <p className="text-slate-300 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">{msg.message_content}</p>
+                       <p className="text-slate-700 leading-relaxed bg-white p-4 rounded-2xl shadow-sm">{msg.message_content}</p>
                        <div className="flex items-center gap-4 pt-1">
-                         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60"><Clock className="h-3 w-3" /> ID: {msg.id.slice(0, 8)}</div>
-                         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60"><Info className="h-3 w-3" /> Type: {msg.message_type}</div>
+                         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400"><Clock className="h-3 w-3" /> ID: {msg.id.slice(0, 8)}</div>
+                         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400"><Info className="h-3 w-3" /> Type: {msg.message_type}</div>
                        </div>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : <div className="flex flex-col items-center justify-center py-24 text-center"><MessageSquare className="h-12 w-12 text-muted-foreground mb-6" /><h3 className="text-xl font-bold">No History Found</h3></div>}
+            ) : <div className="flex flex-col items-center justify-center py-24 text-center"><MessageSquare className="h-12 w-12 text-slate-700 mb-6 stroke-[1.5]" /><h3 className="text-xl font-bold text-slate-900">No History Found</h3></div>}
           </ScrollArea>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-         <Card className="border-white/10 bg-primary/5 backdrop-blur-md rounded-3xl p-6 flex items-start gap-4">
+         <Card className="border-white/10 bg-primary/10 rounded-3xl p-6 flex items-start gap-4">
             <div className="p-3 bg-primary text-primary-foreground rounded-2xl"><Shield className="h-6 w-6" /></div>
             <div><h4 className="font-bold text-lg">Read-Only Access</h4><p className="text-sm text-muted-foreground leading-relaxed mt-1">Your account has been granted read-only access to this bot's history by the system administrator.</p></div>
          </Card>

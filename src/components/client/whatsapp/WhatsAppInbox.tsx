@@ -144,24 +144,24 @@ export default function WhatsAppInbox() {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-black/20 backdrop-blur-xl rounded-xl">
+    <div className="flex h-full w-full overflow-hidden bg-white/40 shadow-sm rounded-[2rem]">
       {/* Sidebar */}
       <div className={cn(
-        "flex flex-col border-r border-white/5 bg-black/40 transition-all duration-300",
+        "flex flex-col border-r border-slate-200/50 bg-transparent transition-all duration-300",
         sidebarOpen ? "w-full md:w-80 lg:w-96" : "w-0 md:w-20 overflow-hidden"
       )}>
         <div className="p-4 space-y-4 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-white">Messages</h2>
+            <h2 className="font-bold text-slate-900">Messages</h2>
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(false)}>
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4 text-slate-500" />
             </Button>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
               placeholder="Search..." 
-              className="pl-9 bg-white/5 border-white/10"
+              className="pl-9 bg-white shadow-sm border-none text-slate-900 placeholder:text-slate-400 rounded-xl"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -173,8 +173,8 @@ export default function WhatsAppInbox() {
                 variant={activeFilter === f ? "default" : "outline"}
                 size="sm"
                 className={cn(
-                  "rounded-full text-[10px] h-7 whitespace-nowrap transition-all", 
-                  activeFilter === f ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20" : "bg-white/5 border-white/10 hover:bg-white/10"
+                  "rounded-full text-[10px] h-7 whitespace-nowrap transition-all border-none", 
+                  activeFilter === f ? "bg-blue-600 text-white shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50 shadow-sm"
                 )}
                 onClick={() => setActiveFilter(f)}
               >
@@ -197,22 +197,22 @@ export default function WhatsAppInbox() {
                 }}
                 className={cn(
                   "w-full flex items-center gap-3 p-3 rounded-xl transition-all",
-                  activeChatId === chat.id ? "bg-blue-600/20 border-blue-500/20" : "hover:bg-white/5"
+                  activeChatId === chat.id ? "bg-white shadow-sm" : "hover:bg-white/60"
                 )}
               >
-                <Avatar className="h-12 w-12 border border-white/5">
+                <Avatar className="h-12 w-12 border border-white shadow-sm">
                   <AvatarFallback className="bg-blue-600 text-white font-bold">
                     {chat.contact_name?.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-white truncate text-sm">{chat.contact_name}</h3>
-                    <span className="text-[10px] text-white/40">
+                    <h3 className="font-semibold text-slate-900 truncate text-sm">{chat.contact_name}</h3>
+                    <span className="text-[10px] text-slate-400">
                       {chat.last_message_at ? formatDistanceToNow(new Date(chat.last_message_at), { addSuffix: false }) : ""}
                     </span>
                   </div>
-                  <p className="text-xs text-white/60 truncate">{chat.last_message_snippet}</p>
+                  <p className="text-xs text-slate-500 truncate">{chat.last_message_snippet}</p>
                 </div>
               </button>
             ))}
@@ -224,24 +224,24 @@ export default function WhatsAppInbox() {
       <div className={cn("flex-1 flex flex-col min-w-0", !activeChatId && "hidden md:flex")}>
         {activeChat ? (
           <>
-            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20 flex-shrink-0">
+            <div className="p-4 border-b border-slate-200/50 flex items-center justify-between bg-white/40 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(true)}>
-                  <ChevronDown className="h-5 w-5 rotate-90" />
+                  <ChevronDown className="h-5 w-5 rotate-90 text-slate-500" />
                 </Button>
-                <Avatar className="h-10 w-10 border border-white/10">
-                  <AvatarFallback className="bg-white/5 text-white">
+                <Avatar className="h-10 w-10 border border-white shadow-sm">
+                  <AvatarFallback className="bg-slate-100 text-slate-700 font-bold">
                     {activeChat.contact_name?.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-bold text-white text-sm md:text-base">{activeChat.contact_name}</h3>
-                  <p className="text-[10px] text-white/40">{activeChat.phone_number}</p>
+                  <h3 className="font-bold text-slate-900 text-sm md:text-base">{activeChat.contact_name}</h3>
+                  <p className="text-[10px] text-slate-500">{activeChat.phone_number}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-white/40 hover:text-white"><Phone className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="text-white/40 hover:text-white"><MoreHorizontal className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"><Phone className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"><MoreHorizontal className="h-4 w-4" /></Button>
               </div>
             </div>
 
@@ -249,29 +249,29 @@ export default function WhatsAppInbox() {
               <div className="space-y-4 max-w-4xl mx-auto">
                 {messages.map((msg) => (
                   <div key={msg.id} className={cn("flex items-end gap-2", msg.direction === 'outbound' ? "flex-row-reverse" : "flex-row")}>
-                    <Avatar className="h-8 w-8 shrink-0 mb-1">
-                      <AvatarFallback className={cn("text-[10px]", msg.direction === 'outbound' ? "bg-white/10" : "bg-blue-600")}>
+                    <Avatar className="h-8 w-8 shrink-0 mb-1 border border-white shadow-sm">
+                      <AvatarFallback className={cn("text-[10px] font-bold", msg.direction === 'outbound' ? "bg-slate-100 text-slate-700" : "bg-blue-600 text-white")}>
                         {msg.direction === 'outbound' ? 'AI' : (msg.sender_name || 'U').substring(0, 1).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className={cn("max-w-[80%] flex flex-col gap-1", msg.direction === 'outbound' ? "items-end" : "items-start")}>
-                      <div className={cn("p-3 rounded-2xl text-sm", msg.direction === 'outbound' ? "bg-blue-600 rounded-br-none" : "bg-white/10 rounded-bl-none")}>
+                      <div className={cn("p-3 rounded-2xl text-sm shadow-sm", msg.direction === 'outbound' ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-slate-800 rounded-bl-none")}>
                         {msg.message_content}
                       </div>
-                      <span className="text-[9px] text-white/30">{format(new Date(msg.sent_at), 'hh:mm a')}</span>
+                      <span className="text-[9px] text-slate-400">{format(new Date(msg.sent_at), 'hh:mm a')}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </ScrollArea>
 
-            <div className="p-4 border-t border-white/5 bg-black/20 flex-shrink-0">
-              <div className="max-w-4xl mx-auto flex items-center gap-2 bg-white/5 rounded-2xl p-2 pr-3">
-                <Button variant="ghost" size="icon" className="text-white/40 hover:text-white h-8 w-8"><Smile className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="text-white/40 hover:text-white h-8 w-8"><Paperclip className="h-4 w-4" /></Button>
+            <div className="p-4 border-t border-slate-200/50 bg-white/40 flex-shrink-0">
+              <div className="max-w-4xl mx-auto flex items-center gap-2 bg-white shadow-sm rounded-2xl p-2 pr-3">
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 hover:bg-slate-50 h-8 w-8"><Smile className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 hover:bg-slate-50 h-8 w-8"><Paperclip className="h-4 w-4" /></Button>
                 <textarea
                   placeholder="Type a message..."
-                  className="flex-1 bg-transparent border-none text-white text-sm focus:ring-0 resize-none py-2 max-h-32"
+                  className="flex-1 bg-transparent border-none text-slate-900 placeholder:text-slate-400 text-sm focus:ring-0 resize-none py-2 max-h-32"
                   rows={1}
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
@@ -279,7 +279,7 @@ export default function WhatsAppInbox() {
                 />
                 <Button 
                   size="icon" 
-                  className={cn("h-8 w-8 rounded-xl", messageInput.trim() ? "bg-blue-600" : "bg-white/10")}
+                  className={cn("h-8 w-8 rounded-xl transition-all", messageInput.trim() ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "bg-slate-100 text-slate-400")}
                   onClick={handleSendMessage}
                   disabled={!messageInput.trim() || isSending}
                 >
@@ -289,9 +289,9 @@ export default function WhatsAppInbox() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <MessageSquare className="h-12 w-12 text-white/10 mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Select a chat</h2>
+          <div className="flex-1 flex flex-col items-center justify-center bg-white/20">
+            <MessageSquare className="h-12 w-12 text-slate-300 mb-4 stroke-[1.5]" />
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Select a chat</h2>
           </div>
         )}
       </div>

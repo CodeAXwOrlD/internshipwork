@@ -1,4 +1,4 @@
-import { Menu, Sparkles, LogOut, Settings, User, CreditCard } from "lucide-react";
+import { Menu, Sparkles, LogOut, Settings, User, CreditCard, PanelLeftClose, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,7 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import ClientNotificationsDropdown from "./ClientNotificationsDropdown";
 import { motion } from "framer-motion";
 
-export default function ClientHeader({ onMenuClick }: { onMenuClick: () => void }) {
+export default function ClientHeader({ onMenuClick, collapsed, onToggleCollapse }: { onMenuClick: () => void; collapsed: boolean; onToggleCollapse: () => void }) {
   const { profile, logout } = useAuth();
   const { client, admin, assignedServices, primaryColor } = useClient();
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ export default function ClientHeader({ onMenuClick }: { onMenuClick: () => void 
   };
 
   return (
-    <header className="fixed top-0 right-0 left-0 md:left-64 z-30 flex h-16 md:h-16 items-center justify-between border-b border-white/5 bg-sidebar backdrop-blur-xl px-4 md:px-8 safe-area-top shadow-sm shadow-black/20">
+    <header className={`fixed top-0 right-0 left-0 z-30 flex h-16 md:h-16 items-center justify-between border-b border-white/5 bg-sidebar px-4 md:px-8 safe-area-top shadow-sm shadow-black/20 transition-[left] duration-300 ${collapsed ? 'md:left-[72px]' : 'md:left-64'}`}>
       {/* Left: hamburger on mobile and page title */}
       <div className="flex items-center gap-2 md:gap-4">
         <Button variant="ghost" size="icon" className="md:hidden h-10 w-10 text-white" onClick={onMenuClick}>

@@ -23,7 +23,7 @@ import {
   Sparkles, TrendingUp, Target, Calendar, ArrowUpRight,
   Filter, Layout, Layers, Globe
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { formatDistanceToNow, format, startOfMonth } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -71,7 +71,7 @@ export default function EmailMarketingPage() {
           </div>
 
           <div className="flex flex-col gap-3 min-w-[240px]">
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-lg">
+            <div className="bg-white/5 bg-opacity-90 rounded-2xl p-4 border border-white/10 shadow-lg">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Monthly Usage</span>
                 <span className="text-[10px] font-black text-primary">{emailService.usage_consumed} / {emailService.usage_limit}</span>
@@ -254,7 +254,7 @@ export default function EmailMarketingPage() {
                   <span className="text-sm font-black text-slate-800">Standard Builder</span>
                   <p className="text-[10px] text-slate-500 font-medium">Drag & drop sections</p>
                 </div>
-                <div className="p-4 rounded-2xl border-2 border-slate-100 hover:border-primary/30 transition-all cursor-pointer flex flex-col items-center text-center gap-2 group">
+                <div className="p-4 rounded-2xl border-2 border-slate-100 hover:border-primary/30 transition-colors cursor-pointer flex flex-col items-center text-center gap-2 group">
                   <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center group-hover:bg-primary transition-colors"><Sparkles className="w-5 h-5" /></div>
                   <span className="text-sm font-black text-slate-800">AI Component Generator</span>
                   <p className="text-[10px] text-slate-500 font-medium">Prompt to Page</p>
@@ -284,7 +284,7 @@ function StatsCard({ icon, label, value, trend, color }: { icon: React.ReactNode
   };
 
   return (
-    <Card className="rounded-3xl border-slate-50 bg-white/50 backdrop-blur-sm shadow-xl shadow-slate-200/20 hover:shadow-2xl hover:shadow-primary/5 transition-all group overflow-hidden relative">
+    <Card className="rounded-3xl border-slate-50 bg-white/50 bg-opacity-85 shadow-xl shadow-slate-200/20 hover:shadow-2xl hover:shadow-primary/5 transition-colors group overflow-hidden relative">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform", colorClasses[color])}>

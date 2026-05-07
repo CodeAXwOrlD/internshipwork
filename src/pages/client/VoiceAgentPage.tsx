@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { motion } from "framer-motion";
+
 import { cn } from "@/lib/utils";
 
 /* ─── Types ─── */
@@ -216,7 +216,7 @@ export default function VoiceAgentPage() {
   if (isLoading) return <LoadingSkeleton />;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 pb-12">
+    <div   className="space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div>
@@ -232,7 +232,7 @@ export default function VoiceAgentPage() {
             Your neural voice agent is currently handling global operations.
           </p>
         </div>
-        <div className="flex items-center gap-4 flex-wrap bg-white/80 p-3 rounded-2xl border border-white/50 shadow-sm backdrop-blur-md">
+        <div className="flex items-center gap-4 flex-wrap bg-white/80 p-3 rounded-2xl border border-white/50 shadow-sm bg-opacity-90">
           <Badge variant="outline" className="text-[10px] py-1.5 px-3 bg-primary/10 border-primary/20 text-primary font-bold uppercase tracking-widest">
             {agentService.usage_consumed} / {agentService.usage_limit} Signals Used
           </Badge>
@@ -280,7 +280,7 @@ export default function VoiceAgentPage() {
 
       {/* Main Console Grid */}
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-        <Card className="lg:col-span-2 bg-white border-slate-200/60 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+        <Card className="lg:col-span-2 bg-white border-slate-200/60 shadow-sm overflow-hidden group hover:shadow-md transition-colors">
           <CardHeader className="border-b border-slate-200/60 bg-slate-50/50 py-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -350,7 +350,7 @@ export default function VoiceAgentPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 border-white/50 shadow-sm backdrop-blur-xl flex flex-col overflow-hidden">
+        <Card className="bg-white/80 border-white/50 shadow-sm bg-opacity-95 flex flex-col overflow-hidden">
           <CardHeader className="border-b border-sidebar-border/10 bg-sidebar/5 py-4">
             <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Settings className="h-5 w-5 text-primary" />
@@ -361,7 +361,7 @@ export default function VoiceAgentPage() {
             {isActive ? (
               <div className="space-y-6 text-center">
                 <div className="relative mx-auto w-24 h-24">
-                  <motion.div 
+                  <div 
                     animate={{ rotate: 360 }}
                     transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     className="absolute inset-0 rounded-full border-2 border-dashed border-primary/30"
@@ -374,7 +374,7 @@ export default function VoiceAgentPage() {
                   <h3 className="text-xl font-bold text-slate-800 mb-2 underline decoration-primary/30 decoration-4 underline-offset-4 tracking-tight">System Operational</h3>
                   <p className="text-sm text-slate-500 leading-relaxed font-medium">Agent is intercepting streams and executing neural responses.</p>
                 </div>
-                <Button variant="outline" className="w-full border-sidebar-border/20 hover:bg-sidebar/5 hover:text-primary transition-all rounded-xl font-bold" onClick={() => toggleActive(false)}>
+                <Button variant="outline" className="w-full border-sidebar-border/20 hover:bg-sidebar/5 hover:text-primary transition-colors rounded-xl font-bold" onClick={() => toggleActive(false)}>
                    Emergency Suspension
                 </Button>
               </div>
@@ -404,7 +404,7 @@ export default function VoiceAgentPage() {
       </div>
 
       {/* Recent Activity Table */}
-      <Card className="bg-white/80 border-white/50 shadow-sm backdrop-blur-xl overflow-hidden mt-6">
+      <Card className="bg-white/80 border-white/50 shadow-sm bg-opacity-95 overflow-hidden mt-6">
         <CardHeader className="border-b border-sidebar-border/10 py-4 bg-sidebar/5">
           <CardTitle className="text-lg font-bold text-slate-800">Stream Manifest</CardTitle>
         </CardHeader>
@@ -518,7 +518,7 @@ export default function VoiceAgentPage() {
           )}
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
 
@@ -542,7 +542,7 @@ function StatsCard({
   onLinkClick?: () => void;
 }) {
   return (
-    <Card className="bg-white/80 border-white/50 shadow-sm backdrop-blur-xl hover:shadow-md hover:border-primary/30 transition-all group overflow-hidden relative">
+    <Card className="bg-white/80 border-white/50 shadow-sm bg-opacity-95 hover:shadow-md hover:border-primary/30 transition-colors group overflow-hidden relative">
       <div 
         className="absolute -top-10 -right-10 h-24 w-24 rounded-full blur-2xl opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" 
         style={{ backgroundColor: color }}
@@ -550,7 +550,7 @@ function StatsCard({
       <CardContent className="pt-6 relative z-10">
         <div className="flex items-center gap-4">
           <div
-            className="rounded-2xl p-4 border border-sidebar-border/10 bg-sidebar/5 group-hover:bg-primary/10 transition-all text-primary"
+            className="rounded-2xl p-4 border border-sidebar-border/10 bg-sidebar/5 group-hover:bg-primary/10 transition-colors text-primary"
             style={{ color }}
           >
             {icon}

@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import ClientSidebar from "./ClientSidebar";
 import ClientHeader from "./ClientHeader";
 import MobileBottomNav from "./MobileBottomNav";
 import { ClientProvider } from "@/contexts/ClientContext";
-import { motion, AnimatePresence } from "framer-motion";
 
 export default function ClientLayout() {
   return (
@@ -16,27 +15,33 @@ export default function ClientLayout() {
 
 function ClientLayoutInner() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("sidebar-collapsed") === "true"; } catch { return false; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("sidebar-collapsed", String(collapsed)); } catch {}
+  }, [collapsed]);
 
   return (
     <div className="min-h-screen bg-mesh md:flex overflow-hidden">
-      <ClientSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <ClientSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed(c => !c)}
+      />
       
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <ClientHeader onMenuClick={() => setSidebarOpen(true)} />
+        <ClientHeader
+          onMenuClick={() => setSidebarOpen(true)}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed(c => !c)}
+        />
 
-        <main className="flex-1 overflow-y-auto pt-14 md:pt-16 pb-16 md:pb-0">
+        <main className="flex-1 overflow-y-auto pt-14 md:pt-16 pb-16 md:pb-0 [transform:translateZ(0)] [will-change:scroll-position]">
           <div className="p-4 md:p-6 max-w-[1600px] mx-auto">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={window.location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
+            <Outlet />
           </div>
         </main>
       </div>

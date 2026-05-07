@@ -18,7 +18,6 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { useClientServices } from "@/hooks/useClientServices";
 import { getServicePath, SERVICE_LABEL_MAP } from "@/lib/service-routes";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -126,19 +125,6 @@ export default function ClientDashboardHome() {
     setIsLoading(false);
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
-
   if (contextLoading || isLoading) {
     return (
       <div className="space-y-6">
@@ -159,11 +145,7 @@ export default function ClientDashboardHome() {
   if (assignedServices.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-         <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="rounded-3xl bg-white p-10 border border-primary/10 shadow-xl shadow-primary/5 max-w-lg"
-        >
+         <div className="rounded-3xl bg-white p-10 border border-primary/10 shadow-xl shadow-primary/5 max-w-lg">
           <div className="rounded-2xl bg-primary/10 p-6 mb-6 inline-block">
             <Package className="h-16 w-16 text-primary" />
           </div>
@@ -181,7 +163,7 @@ export default function ClientDashboardHome() {
             <MessageCircle className="h-5 w-5 mr-2" />
             Contact Administrator
           </Button>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -200,12 +182,7 @@ export default function ClientDashboardHome() {
   };
 
   return (
-    <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="space-y-8"
-    >
+    <div className="space-y-8">
       {/* Usage Alerts */}
       {nearLimitServices.length > 0 && (
         <Alert className="bg-red-50 border-red-200 text-red-800 rounded-2xl">
@@ -222,7 +199,7 @@ export default function ClientDashboardHome() {
       )}
 
       {/* Welcome Banner */}
-      <motion.div variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 rounded-3xl bg-gradient-to-br from-primary/10 via-white to-accent/10 border border-primary/20 shadow-sm relative overflow-hidden group">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 rounded-3xl bg-gradient-to-br from-primary/10 via-white to-accent/10 border border-primary/20 shadow-sm relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-8 opacity-[0.05] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
           <TrendingUp className="w-48 h-48 text-primary" />
         </div>
@@ -245,10 +222,10 @@ export default function ClientDashboardHome() {
           <p className="text-4xl font-black text-primary tabular-nums">{format(new Date(), "HH:mm")}</p>
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{format(new Date(), "EEEE, MMMM d")}</p>
         </div>
-      </motion.div>
+      </div>
 
       {/* Stats Cards */}
-      <motion.div variants={itemVariants} className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           icon={<Package className="h-5 w-5" />}
           color={primaryColor}
@@ -279,10 +256,10 @@ export default function ClientDashboardHome() {
           value={stats?.activeCampaigns ?? 0}
           subtext="Active sequences"
         />
-      </motion.div>
+      </div>
 
       {/* My Services */}
-      <motion.div variants={itemVariants}>
+      <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Active Infrastructure</h2>
           <Button variant="ghost" size="sm" className="text-primary font-bold hover:bg-primary/10 rounded-xl px-4" onClick={() => navigate("/client/services")}>
@@ -296,19 +273,18 @@ export default function ClientDashboardHome() {
             const isNearLimit = pct >= 75 && !isOverLimit;
 
             return (
-              <motion.div key={svc.id} whileHover={{ y: -5 }} className="group">
-                <Card className="flex flex-col h-full bg-white/95 border-primary/20 shadow-[0_4px_20px_-4px_rgba(48,79,159,0.1)] transition-all duration-300 overflow-hidden group-hover:shadow-[0_12px_30px_-10px_rgba(48,79,159,0.2)] group-hover:border-primary/50">
+              <div key={svc.id} className="group hover:-translate-y-1 transition-transform duration-200">
+                <Card className="flex flex-col h-full bg-white/95 border-primary/20 shadow-[0_4px_20px_-4px_rgba(48,79,159,0.1)] transition-shadow duration-200 overflow-hidden group-hover:shadow-[0_12px_30px_-10px_rgba(48,79,159,0.2)] group-hover:border-primary/50">
                   <div className="h-1 bg-slate-100 w-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      className={cn("h-full", isOverLimit ? "bg-red-500" : isNearLimit ? "bg-orange-400" : "bg-primary")}
+                    <div
+                      className={cn("h-full transition-[width] duration-700 ease-out", isOverLimit ? "bg-red-500" : isNearLimit ? "bg-orange-400" : "bg-primary")}
+                      style={{ width: `${pct}%` }}
                     />
                   </div>
                   <CardContent className="pt-8 flex-1 space-y-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-4 min-w-0">
-                        <div className="rounded-2xl p-3 bg-white/5 border border-white/10 group-hover:bg-primary/10 group-hover:border-primary/20 transition-all">
+                        <div className="rounded-2xl p-3 bg-white/5 border border-white/10 group-hover:bg-primary/10 group-hover:border-primary/20 transition-colors">
                           <ServiceIcon slug={svc.service_slug} color={primaryColor} size={24} />
                         </div>
                         <div className="min-w-0">
@@ -326,14 +302,12 @@ export default function ClientDashboardHome() {
                         <span className={getUsageColor(pct)}>{pct}%</span>
                       </div>
                       <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(pct, 100)}%` }}
-                          transition={{ duration: 1, ease: "easeOut" }}
+                        <div
                           className={cn(
-                            "h-full transition-all",
+                            "h-full transition-[width] duration-700 ease-out",
                             pct >= 90 ? "bg-red-500" : pct >= 75 ? "bg-orange-500" : "bg-emerald-500"
                           )}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
                         />
                       </div>
                       <div className="flex justify-between items-center text-[10px]">
@@ -347,7 +321,7 @@ export default function ClientDashboardHome() {
                   <div className="px-6 pb-6">
                     <Button
                       size="lg"
-                      className="w-full text-white font-bold rounded-xl shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      className="w-full text-white font-bold rounded-xl shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-shadow hover:scale-[1.02] active:scale-[0.98]"
                       style={{ backgroundColor: primaryColor }}
                       onClick={() => navigate(getServicePath(svc.service_slug))}
                     >
@@ -356,16 +330,16 @@ export default function ClientDashboardHome() {
                     </Button>
                   </div>
                 </Card>
-              </motion.div>
+              </div>
             );
           })}
         </div>
-      </motion.div>
+      </div>
 
       <ClientAllServices primaryColor={primaryColor} />
 
-      <motion.div variants={itemVariants} className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-        <Card className="lg:col-span-2 bg-white border-slate-200/60 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+        <Card className="lg:col-span-2 bg-white border-slate-200/60 shadow-sm overflow-hidden group hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200/60 py-4">
             <CardTitle className="text-xl font-bold text-slate-800">Stream Activity</CardTitle>
             <Button variant="ghost" size="sm" className="text-primary" onClick={() => navigate("/client/usage")}>
@@ -376,8 +350,8 @@ export default function ClientDashboardHome() {
             {activities.length > 0 ? (
               <div className="space-y-4">
                 {activities.map((item) => (
-                  <div key={`${item.type}-${item.id}`} className="group flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-all">
-                    <div className="rounded-xl p-3 bg-white/5 border border-white/10 group-hover:border-primary/30 transition-all">
+                  <div key={`${item.type}-${item.id}`} className="group flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-colors">
+                    <div className="rounded-xl p-3 bg-white/5 border border-white/10 group-hover:border-primary/30 transition-colors">
                       {getActivityIcon(item.type)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -407,7 +381,7 @@ export default function ClientDashboardHome() {
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/40 border-white/5 backdrop-blur-sm">
+        <Card className="bg-slate-900/40 border-white/5">
           <CardHeader className="border-b border-white/5 py-4">
             <CardTitle className="text-xl font-bold text-white">Neural Gateways</CardTitle>
           </CardHeader>
@@ -445,8 +419,8 @@ export default function ClientDashboardHome() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -458,7 +432,7 @@ function ClientAllServices({ primaryColor }: { primaryColor: string }) {
   if (lockedServices.length === 0) return null;
 
   return (
-    <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="pt-8">
+    <div className="pt-8">
       <div className="flex items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Available Expansion</h2>
         <Badge variant="outline" className="bg-primary/5 border-primary/10 text-primary uppercase text-[9px] tracking-widest">{lockedServices.length} Locked</Badge>
@@ -468,7 +442,7 @@ function ClientAllServices({ primaryColor }: { primaryColor: string }) {
           <ServiceCard key={s.id} service={s} primaryColor={primaryColor} />
         ))}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -484,14 +458,14 @@ function StatsCard({
   onLinkClick?: () => void;
 }) {
   return (
-    <Card className="bg-white/95 border-primary/20 shadow-[0_4px_20px_-4px_rgba(48,79,159,0.1)] hover:shadow-[0_12px_30px_-10px_rgba(48,79,159,0.2)] hover:border-primary/50 transition-all group overflow-hidden relative">
+    <Card className="bg-white/95 border-primary/20 shadow-[0_4px_20px_-4px_rgba(48,79,159,0.1)] hover:shadow-[0_12px_30px_-10px_rgba(48,79,159,0.2)] hover:border-primary/50 transition-shadow group overflow-hidden relative">
       <div 
-        className="absolute -top-10 -right-10 h-24 w-24 rounded-full blur-2xl opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" 
+        className="absolute -top-10 -right-10 h-24 w-24 rounded-full opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" 
         style={{ backgroundColor: color }}
       />
       <CardContent className="pt-6 relative z-10">
         <div className="flex items-center gap-4">
-          <div className="rounded-2xl p-4 border border-sidebar-border/10 bg-sidebar/5 group-hover:bg-primary/10 transition-all text-primary" style={{ color }}>
+          <div className="rounded-2xl p-4 border border-sidebar-border/10 bg-sidebar/5 group-hover:bg-primary/10 transition-colors text-primary" style={{ color }}>
             {icon}
           </div>
           <div className="flex-1 min-w-0">
@@ -524,19 +498,19 @@ function QuickActionButton({
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-4 w-full rounded-2xl border border-white/60 bg-white/40 backdrop-blur-md p-4 text-left transition-all hover:bg-white/60 hover:border-primary/30 shadow-sm overflow-hidden relative"
+      className="group flex items-center gap-4 w-full rounded-2xl border border-white/60 bg-white/40 p-4 text-left transition-colors hover:bg-white/60 hover:border-primary/30 shadow-sm overflow-hidden relative"
     >
       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-10 transition-opacity">
         <Sparkles className="h-12 w-12 text-primary" />
       </div>
-      <div className="rounded-xl p-3 bg-white/5 border border-white/10 group-hover:text-primary transition-all shadow-inner" style={{ color }}>
+      <div className="rounded-xl p-3 bg-white/5 border border-white/10 group-hover:text-primary transition-colors shadow-inner" style={{ color }}>
         {icon}
       </div>
       <div className="min-w-0 relative z-10">
         <p className="text-sm font-bold text-slate-800 tracking-tight transition-colors group-hover:text-primary">{label}</p>
         <p className="text-[10px] text-slate-600 font-medium">{description}</p>
       </div>
-      <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1 duration-300">
+      <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
         <ArrowRight className="h-4 w-4 text-primary" />
       </div>
     </button>
@@ -563,4 +537,3 @@ function getActivityIcon(type: string) {
     default: return <Activity className="h-4 w-4" />;
   }
 }
-

@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +31,7 @@ interface ClientSidebarProps {
 
 export default function ClientSidebar({ open, onClose, collapsed, onToggleCollapse }: ClientSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { admin, assignedServices, primaryColor } = useClient();
 
   const serviceNavItems = assignedServices
@@ -205,6 +206,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
             <button 
               className="w-full flex justify-center items-center p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
               title="Contact Support"
+              onClick={() => navigate("/client/help")}
             >
               <LifeBuoy className="h-5 w-5" />
             </button>
@@ -212,7 +214,12 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
             <div className="rounded-2xl bg-white/5 border border-white/10 p-4 transition-opacity duration-300 animate-in fade-in slide-in-from-bottom-2">
               <p className="text-xs font-semibold text-white mb-1">Need help?</p>
               <p className="text-[10px] text-slate-300 mb-3 leading-relaxed">Contact your manager for any assistance.</p>
-              <Button size="sm" variant="ghost" className="w-full h-8 text-[11px] bg-primary/20 hover:bg-primary/30 text-white rounded-lg">
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="w-full h-8 text-[11px] bg-primary/20 hover:bg-primary/30 text-white rounded-lg"
+                onClick={() => navigate("/client/help")}
+              >
                 Contact Support
               </Button>
             </div>

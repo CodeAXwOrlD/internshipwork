@@ -138,11 +138,11 @@ export default function ClientNotificationsDropdown() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[380px] md:w-[420px] p-0 glass-dark border-white/10 shadow-2xl mt-2 overflow-hidden">
+      <PopoverContent align="end" className="w-[380px] md:w-[420px] p-0 bg-slate-100/40 backdrop-blur-xl border border-slate-200/40 shadow-2xl mt-2 overflow-hidden rounded-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 bg-white/5">
+        <div className="flex items-center justify-between border-b border-slate-200/60 px-5 py-4 bg-white/30">
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-bold text-white tracking-tight">Signal Feed</h4>
+            <h4 className="text-sm font-bold text-slate-800 tracking-tight">Signal Feed</h4>
             <Badge variant="outline" className="bg-primary/20 border-primary/20 text-primary text-[10px] tracking-tight">{unreadCount} New</Badge>
           </div>
           {unreadCount > 0 && (
@@ -151,12 +151,12 @@ export default function ClientNotificationsDropdown() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 px-5 py-3 bg-white/[0.02] border-b border-white/10">
+        <div className="flex gap-2 px-5 py-3 bg-white/20 border-b border-slate-200/20">
           {(["all", "unread"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-lg transition-all ${filter === f ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-500 hover:text-white hover:bg-white/5"}`}
+              className={`text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-lg transition-all ${filter === f ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"}`}
             >
               {f === "all" ? "Priority" : "New"}
             </button>
@@ -173,10 +173,10 @@ export default function ClientNotificationsDropdown() {
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-16 text-center px-8">
-                <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
-                  <Bell className="h-8 w-8 text-slate-700" />
+                <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-4">
+                  <Bell className="h-8 w-8 text-slate-300" />
                 </div>
-                <p className="text-sm font-bold text-white mb-1">Clear Horizon</p>
+                <p className="text-sm font-bold text-slate-800 mb-1">Clear Horizon</p>
                 <p className="text-xs text-slate-500">{filter === "unread" ? "You've processed all incoming signals." : "No signals detected at this time."}</p>
               </div>
             ) : (
@@ -193,17 +193,17 @@ export default function ClientNotificationsDropdown() {
                   >
                     <button
                       onClick={() => markAsRead(notif.id, notif.action_url)}
-                      className={`group relative flex w-full items-start gap-4 px-5 py-4 text-left transition-all hover:bg-white/5 border-b border-white/5 last:border-0 ${!notif.is_read ? "bg-primary/5" : ""}`}
+                      className={`group relative flex w-full items-start gap-4 px-5 py-4 text-left transition-all hover:bg-white/50 border-b border-slate-200/60 last:border-0 ${!notif.is_read ? "bg-primary/5" : ""}`}
                     >
-                      <div className={`mt-1 h-10 w-10 shrink-0 rounded-xl flex items-center justify-center border border-white/5 ${cfg.bg} transition-transform group-hover:scale-110`}>
+                      <div className={`mt-1 h-10 w-10 shrink-0 rounded-xl flex items-center justify-center border border-slate-100/50 shadow-sm ${cfg.bg} transition-transform group-hover:scale-110`}>
                         <Icon className={`h-5 w-5 ${cfg.color}`} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className={`text-sm font-bold tracking-tight ${notif.is_read ? "text-slate-300" : "text-white"}`}>{notif.title}</p>
+                          <p className={`text-sm font-bold tracking-tight ${notif.is_read ? "text-slate-500 font-medium" : "text-slate-800"}`}>{notif.title}</p>
                           {!notif.is_read && <span className="h-2 w-2 shrink-0 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />}
                         </div>
-                        <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-2">{notif.message}</p>
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2">{notif.message}</p>
                         <div className="flex items-center gap-2">
                           <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
                             {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
@@ -225,11 +225,11 @@ export default function ClientNotificationsDropdown() {
         </ScrollArea>
 
         {/* Footer */}
-        <div className="bg-white/5 p-4 flex items-center justify-center border-t border-white/10">
+        <div className="bg-white/30 p-4 flex items-center justify-center border-t border-slate-200/40">
           <Button
             variant="ghost"
             onClick={() => { setOpen(false); navigate("/client/notifications"); }}
-            className="w-full h-10 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 rounded-xl gap-2"
+            className="w-full h-10 text-xs font-bold text-slate-500 hover:text-primary hover:bg-slate-100 rounded-xl gap-2"
           >
             <Sparkles className="h-4 w-4 text-primary" />
             Launch Notification Center

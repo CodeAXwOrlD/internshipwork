@@ -79,12 +79,7 @@ export function useServiceCatalog() {
     );
 
     // Get plan names for client services
-    const planIds = (clientServices ?? []).filter(c => c.plan_id).map(c => c.plan_id!);
-    let planNameMap = new Map<string, string>();
-    if (planIds.length > 0) {
-      const { data: planNames } = await supabase.from("service_plans").select("id, plan_name").in("id", planIds);
-      planNameMap = new Map((planNames ?? []).map(p => [p.id, p.plan_name]));
-    }
+    const planNameMap = new Map((plans ?? []).map(p => [p.id, p.plan_name]));
 
     setServices(
       (allServices ?? []).map((s) => {

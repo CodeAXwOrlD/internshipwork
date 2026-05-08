@@ -350,30 +350,30 @@ export default function WhatsAppPage() {
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">WhatsApp Automation</p>
           </div>
 
-          <TabsList className="flex bg-muted/20 p-1 h-11 w-full md:w-auto min-w-[300px]">
-            <TabsTrigger value="overview" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs">
+          <TabsList className="flex justify-start bg-muted/20 p-1 h-11 w-full overflow-x-auto scrollbar-hide no-scrollbar md:w-auto">
+            <TabsTrigger value="overview" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs whitespace-nowrap flex-shrink-0">
               <BarChart3 className="h-3.5 w-3.5 mr-2" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="inbox" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs">
+            <TabsTrigger value="inbox" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs whitespace-nowrap flex-shrink-0">
               <MessageSquare className="h-3.5 w-3.5 mr-2" />
               Inbox
             </TabsTrigger>
-            <TabsTrigger value="template" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs">
+            <TabsTrigger value="template" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs whitespace-nowrap flex-shrink-0">
               <FileText className="h-3.5 w-3.5 mr-2" />
               Template
             </TabsTrigger>
-            <TabsTrigger value="ai-settings" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs">
+            <TabsTrigger value="ai-settings" className="flex-1 px-4 rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-bold text-xs whitespace-nowrap flex-shrink-0">
               <BotIcon className="h-3.5 w-3.5 mr-2" />
               AI Settings
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto scrollbar-hide no-scrollbar w-full md:w-auto flex-nowrap pb-1">
           {assignedBots.length > 1 && (
             <Select value={selectedAppId || ""} onValueChange={setSelectedAppId}>
-              <SelectTrigger className="w-[160px] h-9 bg-background border-muted-foreground/20 text-xs">
+              <SelectTrigger className="w-[160px] h-9 bg-background border-muted-foreground/20 text-xs shrink-0">
                 <SelectValue placeholder="Select Bot" />
               </SelectTrigger>
               <SelectContent>
@@ -383,13 +383,13 @@ export default function WhatsAppPage() {
               </SelectContent>
             </Select>
           )}
-          <Badge variant="outline" className="text-[10px] py-1 px-3 bg-background/50">
+          <Badge variant="outline" className="text-[10px] py-1 px-3 bg-background/50 shrink-0 whitespace-nowrap">
             {Math.max(stats?.total || 0, waService?.usage_consumed || 0)} / {waService?.usage_limit || 0}
           </Badge>
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-9 px-3 text-xs"
+            className="h-9 px-3 text-xs shrink-0 whitespace-nowrap"
             onClick={() => setCampaignWizardOpen(true)}
             disabled={assignedBots.length === 0}
           >
@@ -397,7 +397,7 @@ export default function WhatsAppPage() {
           </Button>
           <Button 
             size="sm" 
-            className="h-9 px-3 text-xs shadow-lg shadow-green-500/20"
+            className="h-9 px-3 text-xs shadow-lg shadow-green-500/20 shrink-0 whitespace-nowrap"
             style={{ backgroundColor: assignedBots.length === 0 ? "#a3a3a3" : "#25D366", color: "white" }} 
             onClick={() => setSendModalOpen(true)}
             disabled={assignedBots.length === 0}
@@ -551,16 +551,17 @@ export default function WhatsAppPage() {
             <p className="text-sm text-muted-foreground">Manage your Whatsapp templates</p>
           </div>
 
-          <div className="bg-card/50 border border-border rounded-xl p-4 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Phone className="h-5 w-5 text-primary" />
+          <div className="bg-card/50 border border-border rounded-xl p-3 md:p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
+                <Phone className="h-4 w-4 md:h-5 md:w-5 text-primary" />
               </div>
-              <span className="font-bold text-lg">{assignedBots.length} Phone Numbers</span>
+              <span className="font-bold text-sm md:text-lg">{assignedBots.length} Phone Numbers</span>
             </div>
-            <Button variant="outline" size="sm" className="bg-background hover:bg-muted font-bold text-xs h-9">
-              <RefreshCw className="h-3.5 w-3.5 mr-2" />
-              Sync Numbers
+            <Button variant="outline" size="sm" className="bg-background hover:bg-muted font-bold text-xs h-8 md:h-9 px-2 md:px-3">
+              <RefreshCw className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Sync Numbers</span>
+              <span className="sm:hidden">Sync</span>
             </Button>
           </div>
 

@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Package, Activity, Users, Zap, MessageCircle, Phone,
   Share2, MessageSquare, AlertTriangle, XCircle, ArrowRight,
@@ -42,7 +42,7 @@ export default function ClientDashboardHome() {
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!client || contextLoading) return;
@@ -381,9 +381,12 @@ export default function ClientDashboardHome() {
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/40 border-white/5">
-          <CardHeader className="border-b border-white/5 py-4">
-            <CardTitle className="text-xl font-bold text-white">Neural Gateways</CardTitle>
+        <Card className="bg-white/20 backdrop-blur-lg border-white/20 shadow-xl overflow-hidden">
+          <CardHeader className="border-b border-white/10 py-4 bg-white/5">
+            <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+              Neural Gateways
+            </CardTitle>
           </CardHeader>
           <CardContent className="pt-8 space-y-3">
             {hasService("voice-telecaller") && (
@@ -412,10 +415,15 @@ export default function ClientDashboardHome() {
               onClick={() => navigate("/client/leads")}
             />
             <div className="pt-4 mt-4 border-t border-white/5">
-              <Button variant="outline" className="w-full border-white/10 text-black hover:bg-white/5 rounded-xl py-6 gap-3">
-                <Headphones className="h-4 w-4" />
-                Reach Technical Support
-              </Button>
+              <Link to="/client/help" className="block w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full bg-white/40 border-white/60 text-slate-800 font-bold hover:bg-white/60 hover:text-primary hover:border-primary/30 rounded-2xl py-6 gap-3 shadow-sm transition-all group"
+                >
+                  <Headphones className="h-5 w-5 text-slate-600 group-hover:text-primary transition-colors" />
+                  Reach Technical Support
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

@@ -18,7 +18,8 @@ import {
   Trash2,
   Archive,
   Star,
-  Plus
+  Plus,
+  ChevronDown
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -90,7 +91,9 @@ export default function LiveChatPage() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setTimeout(() => {
+        scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      }, 100);
     }
   }, [chatMessages, selectedChat]);
 
@@ -269,7 +272,10 @@ export default function LiveChatPage() {
     <div className="flex h-[calc(100vh-120px)] overflow-hidden rounded-3xl bg-white/50 bg-opacity-95 border border-primary/10 shadow-2xl">
       
       {/* 1. Sidebar: Chat List */}
-      <div className="w-80 flex flex-col border-r border-sidebar-border/10 bg-white/30">
+      <div className={cn(
+        "flex flex-col border-r border-sidebar-border/10 bg-white/30 shrink-0",
+        selectedChat ? "hidden md:flex md:w-80" : "flex w-full md:w-80"
+      )}>
         <div className="p-4 border-b border-sidebar-border/10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-black text-slate-800 tracking-tight">LeadNest <span className="text-primary">Chat</span></h2>
@@ -353,12 +359,18 @@ export default function LiveChatPage() {
       </div>
 
       {/* 2. Main: Chat Window */}
-      <div className="flex-1 flex flex-col bg-white/20">
+      <div className={cn(
+        "flex-1 flex flex-col bg-white/20 min-w-0",
+        !selectedChat && "hidden md:flex"
+      )}>
         {/* Chat Header */}
         {selectedChat ? (
           <>
             <div className="p-4 flex items-center justify-between border-b border-sidebar-border/10">
               <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" className="md:hidden -ml-2 mr-1 shrink-0" onClick={() => setSelectedChat(null)}>
+                  <ChevronDown className="h-5 w-5 rotate-90 text-slate-500" />
+                </Button>
                 <Avatar className="h-10 w-10 border border-white">
                   <AvatarImage src={selectedChat.avatar} />
                   <AvatarFallback>{selectedChat.name[0]}</AvatarFallback>
@@ -387,7 +399,7 @@ export default function LiveChatPage() {
             </div>
 
             {/* Chat Messages */}
-            <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+            <ScrollArea className="flex-1 p-6">
               <div className="space-y-6 max-w-4xl mx-auto">
                 <div className="flex justify-center my-4">
                   <span className="text-[10px] font-bold text-slate-400 border border-slate-100 rounded-full px-3 py-1 uppercase tracking-widest bg-white/30">Conversation started today</span>
@@ -445,6 +457,7 @@ export default function LiveChatPage() {
                     </div>
                   )}
                 
+                <div ref={scrollRef} />
               </div>
             </ScrollArea>
 

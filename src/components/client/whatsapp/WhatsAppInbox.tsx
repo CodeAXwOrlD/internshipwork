@@ -28,7 +28,7 @@ export default function WhatsAppInbox() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [messageInput, setMessageInput] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // sidebarOpen state removed in favor of activeChatId for mobile routing
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -148,14 +148,11 @@ export default function WhatsAppInbox() {
       {/* Sidebar */}
       <div className={cn(
         "flex flex-col border-r border-slate-200/50 bg-transparent transition-all duration-300",
-        sidebarOpen ? "w-full md:w-80 lg:w-96" : "w-0 md:w-20 overflow-hidden"
+        activeChatId ? "hidden md:flex md:w-80 lg:w-96 flex-shrink-0" : "flex w-full md:w-80 lg:w-96 flex-shrink-0"
       )}>
         <div className="p-4 space-y-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-slate-900">Messages</h2>
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(false)}>
-              <X className="h-4 w-4 text-slate-500" />
-            </Button>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -193,7 +190,6 @@ export default function WhatsAppInbox() {
                 key={chat.id}
                 onClick={() => {
                   setActiveChatId(chat.id);
-                  if (window.innerWidth < 768) setSidebarOpen(false);
                 }}
                 className={cn(
                   "w-full flex items-center gap-3 p-3 rounded-xl transition-all",
@@ -226,7 +222,7 @@ export default function WhatsAppInbox() {
           <>
             <div className="p-4 border-b border-slate-200/50 flex items-center justify-between bg-white/40 flex-shrink-0">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(true)}>
+                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setActiveChatId(null)}>
                   <ChevronDown className="h-5 w-5 rotate-90 text-slate-500" />
                 </Button>
                 <Avatar className="h-10 w-10 border border-white shadow-sm">

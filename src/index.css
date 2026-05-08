@@ -11,6 +11,7 @@
 }
 
 html {
+  font-size: 85%;                   /* Scales down entire Tailwind REM system */
   touch-action: manipulation;       /* Kills 300ms mobile tap delay */
   text-rendering: optimizeSpeed;    /* Faster text paint */
   -webkit-font-smoothing: antialiased;

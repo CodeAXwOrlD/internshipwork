@@ -194,15 +194,58 @@ export default function WhatsAppPage() {
   const fetchAssignedBots = useCallback(async () => {
     if (!client) return;
     
-    const { data, error } = await (supabase.from("whatsapp_applications" as any) as any)
+    // 1. Try to find bots directly assigned to this client
+    const { data: directBots, error } = await (supabase.from("whatsapp_applications" as any) as any)
       .select("*")
       .eq("client_id", client.id);
     
-    if (!error && data) {
-      setAssignedBots(data);
-      if (data.length > 0 && !selectedAppId) {
-        setSelectedAppId(data[0].id);
+    // 2. Also check if the user has access via whatsapp_user_access
+    const { data: userAccess } = await (supabase.from("whatsapp_user_access" as any) as any)
+      .select("application_id")
+      .eq("user_id", client.user_id);
+    
+    let allBots = directBots || [];
+    
+    if (userAccess && userAccess.length > 0) {
+      const appIds = userAccess.map((a: any) => a.application_id);
+      const { data: accessedBots } = await (supabase.from("whatsapp_applications" as any) as any)
+        .select("*")
+        .in("id", appIds);
+      
+      if (accessedBots) {
+        // Merge and avoid duplicates
+        const existingIds = new Set(allBots.map(b => b.id));
+        accessedBots.forEach((b: any) => {
+          if (!existingIds.has(b.id)) allBots.push(b);
+        });
       }
+    }
+
+    // 3. Fallback to Env-defined bot if still empty (allows immediate testing)
+    if (allBots.length === 0) {
+      const envApiKey = import.meta.env.VITE_WHATSAPP_API_KEY;
+      const envPhoneId = import.meta.env.VITE_WHATSAPP_PHONE_ID;
+      
+      if (envApiKey && envPhoneId) {
+        allBots.push({
+          id: "00000000-0000-0000-0000-000000000000",
+          name: "WhapiHub (Env)",
+          provider_type: 'api',
+          api_config: {
+            api_key: envApiKey,
+            phone_id: envPhoneId,
+            panel_url: import.meta.env.VITE_WHATSAPP_API_BASE_URL || "https://app.whapihub.com/api"
+          },
+          phone_number_id: envPhoneId,
+          status: 'active',
+          client_id: client.id
+        });
+      }
+    }
+    
+    setAssignedBots(allBots);
+    if (allBots.length > 0 && !selectedAppId) {
+      setSelectedAppId(allBots[0].id);
     }
   }, [client, selectedAppId]);
 

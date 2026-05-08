@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const WHATSAPP_API_URL = "https://app.whapihub.com/v2/whatsapp-business";
+export const WHATSAPP_API_URL = import.meta.env.VITE_WHATSAPP_API_BASE_URL || "https://app.whapihub.com/api";
 const DEFAULT_API_KEY = import.meta.env.VITE_WHATSAPP_API_KEY;
 
 export interface SendWhatsAppMessageParams {
@@ -16,38 +16,56 @@ export interface SendWhatsAppMessageParams {
   phoneNoId?: string;
   application_id: string;
   client_id?: string; // Optional for admin tests
+  baseUrl?: string;
 }
 
 /**
  * Sends a message via WhatsApp and logs it to our local database history.
  */
-export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams) {
+export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams, apiKey?: string) {
   try {
-    const API_URL = import.meta.env.VITE_LEADNEST_SEND_MESSAGE;
+    const API_URL = params.baseUrl ? (params.baseUrl.endsWith('/') ? params.baseUrl + 'messages' : params.baseUrl + '/messages') : import.meta.env.VITE_LEADNEST_SEND_MESSAGE;
+    const token = apiKey || DEFAULT_API_KEY;
 
     if (!API_URL) {
       console.error("VITE_LEADNEST_SEND_MESSAGE is not defined in .env");
       return { success: false, message: "API configuration missing" };
     }
 
+    // WhapiHub expects 'body' field for text messages and often /text endpoint
     const requestBody = {
-      to: params.to.replace('+', ''),
-      phoneNoId: params.phoneNoId,
-      type: "text",
-      text: params.body || params.text
+      to: params.to.replace(/[+\s-]/g, ''),
+      body: params.body || params.text
     };
 
-    console.log("🚀 Sending LeadNest Payload:", JSON.stringify(requestBody, null, 2));
+    console.log("🚀 Sending WhatsApp Payload:", JSON.stringify(requestBody, null, 2));
     
-    const response = await fetch(API_URL, {
+    // If the URL doesn't end with /text or /messages, we might need to adjust it
+    let targetUrl = API_URL;
+    if (targetUrl.endsWith('/messages')) {
+      targetUrl = `${targetUrl}/text`;
+    }
+
+    const response = await fetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(requestBody),
     });
 
-    const result = await response.json();
+    // Check if the response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    let result;
+    if (contentType && contentType.includes("application/json")) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      console.error("Non-JSON response received:", text);
+      return { success: false, message: `Server error: ${response.status}` };
+    }
     
     if (result.success || response.ok) {
       console.log("📥 LeadNest API Response:", result);
@@ -92,7 +110,7 @@ export async function updateMessageStatus(messageId: string, dbMessageId: string
   if (!token) return;
 
   try {
-    let targetUrl = WHATSAPP_API_URL.replace("/whatsapp-business", "/messages");
+    let targetUrl = WHATSAPP_API_URL.endsWith("/") ? WHATSAPP_API_URL + "messages" : WHATSAPP_API_URL + "/messages";
     if (!targetUrl.endsWith("/")) targetUrl += "/";
     targetUrl += messageId;
 

@@ -25,14 +25,17 @@ Deno.serve(async (req) => {
 
     for (const item of dataArray) {
       const body = item.body || item
-      if (body.event !== 'message') continue
+      // Support both 'message' and 'messages' event types from Whapi
+      if (body.event !== 'message' && body.event !== 'messages') continue
 
-      const messageData = body.data
-      const senderPhoneNumber = messageData.senderPhoneNumber
-      const recipientPhoneNumberId = messageData.recipientPhoneNumberId
-      const content = messageData.content?.text || ""
-      const messageId = messageData.messageId
-      const senderName = messageData.senderName
+      const messageData = body.data || (body.messages ? body.messages[0] : null)
+      if (!messageData) continue
+
+      const senderPhoneNumber = messageData.senderPhoneNumber || messageData.from || messageData.chat_id?.split('@')[0]
+      const recipientPhoneNumberId = messageData.recipientPhoneNumberId || body.phone_id || body.phone_number_id
+      const content = messageData.content?.text || messageData.text?.body || messageData.body || ""
+      const messageId = messageData.messageId || messageData.id
+      const senderName = messageData.senderName || messageData.from_name || "WhatsApp User"
 
       console.log(`Processing message from ${senderPhoneNumber} to ${recipientPhoneNumberId}: ${content}`)
 
@@ -45,6 +48,12 @@ Deno.serve(async (req) => {
 
       if (botError || !bot) {
         console.error("Bot not found for recipientPhoneNumberId:", recipientPhoneNumberId)
+        continue
+      }
+
+      // 1.5 Check if bot is active
+      if (bot.status !== 'active') {
+        console.log(`Bot ${bot.name} (${bot.id}) is not active. Status: ${bot.status}. Ignoring message.`)
         continue
       }
 
@@ -105,11 +114,17 @@ Deno.serve(async (req) => {
           // Fetch bot personality (ai_chatbots table)
           const { data: aiBot } = await supabaseAdmin
             .from('ai_chatbots')
-            .select('system_prompt, temperature')
+            .select('system_prompt, temperature, is_active')
             .eq('client_id', clientId)
             .limit(1)
             .maybeSingle()
           
+          // Only respond if AI bot is explicitly enabled
+          if (aiBot && aiBot.is_active === false) {
+            console.log("AI Chatbot is disabled for this client. Skipping AI response.")
+            continue
+          }
+
           const systemPrompt = aiBot?.system_prompt || "You are a helpful and professional assistant for LeadNest. Answer queries concisely and kindly in the same language as the user."
           const temperature = aiBot?.temperature || 0.7
 
@@ -146,7 +161,7 @@ Deno.serve(async (req) => {
             const apiKey = bot.api_config?.api_key || Deno.env.get('WHATSAPP_API_KEY')
             
             if (apiKey) {
-              const whapiRes = await fetch("https://app.whapihub.com/v2/whatsapp-business/messages", {
+              const whapiRes = await fetch("https://app.whapihub.com/api/messages", {
                 method: "POST",
                 headers: {
                   "Authorization": `Bearer ${apiKey}`,

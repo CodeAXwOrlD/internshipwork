@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const FILTERS = ["All", "Closed Deal", "Demo", "Demo Pending", "Follow-UP", "Junk Leads", "New Lead"];
 
-export default function WhatsAppInbox() {
+export default function WhatsAppInbox({ selectedAppId, assignedBots }: { selectedAppId?: string | null, assignedBots?: any[] }) {
   const { client } = useClient();
   const { toast } = useToast();
   const [chats, setChats] = useState<any[]>([]);
@@ -127,17 +127,27 @@ export default function WhatsAppInbox() {
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !activeChat || isSending) return;
     setIsSending(true);
+
+    const bot = assignedBots?.find(b => b.id === selectedAppId);
+
     try {
       const result = await sendWhatsAppMessage({
         to: activeChat.phone_number,
         body: messageInput,
         client_id: client?.id,
+        application_id: selectedAppId || "",
+        phoneNoId: bot?.api_config?.phone_id || "",
         type: "text",
-        phoneNoId,
-      });
-      if (result.success) setMessageInput("");
-    } catch (err) {
+      }, bot?.api_config?.api_key);
+      if (result.success) {
+        setMessageInput("");
+        toast({ title: "Message sent!" });
+      } else {
+        toast({ title: "Send failed", description: result.message, variant: "destructive" });
+      }
+    } catch (err: any) {
       console.error(err);
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
     } finally {
       setIsSending(false);
     }
@@ -285,9 +295,28 @@ export default function WhatsAppInbox() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white/20">
-            <MessageSquare className="h-12 w-12 text-slate-300 mb-4 stroke-[1.5]" />
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Select a chat</h2>
+          <div className="flex-1 flex flex-col items-center justify-center bg-background md:bg-white/20">
+            <div className="p-4 bg-orange-500/10 rounded-2xl mb-6">
+              <MessageSquare className="h-12 w-12 text-orange-500 stroke-[1.5]" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-3">Welcome to Inbox!</h2>
+            <p className="text-muted-foreground mb-8 max-w-md text-center text-sm md:text-base leading-relaxed">
+              Select a contact from the list to start a conversation. Your messages will appear here.
+            </p>
+            <div className="flex gap-4">
+              <Button variant="outline" className="flex flex-col items-center justify-center h-24 w-24 md:w-32 gap-2 bg-background hover:bg-muted dark:bg-card">
+                <MessageSquare className="h-5 w-5 md:h-6 md:w-6 text-orange-500" />
+                <span className="text-[10px] md:text-xs font-semibold whitespace-normal md:whitespace-nowrap text-center">Real-time Chat</span>
+              </Button>
+              <Button variant="outline" className="flex flex-col items-center justify-center h-24 w-24 md:w-32 gap-2 bg-background hover:bg-muted dark:bg-card">
+                <Bot className="h-5 w-5 md:h-6 md:w-6 text-orange-500" />
+                <span className="text-[10px] md:text-xs font-semibold whitespace-normal md:whitespace-nowrap text-center">Templates</span>
+              </Button>
+              <Button variant="outline" className="flex flex-col items-center justify-center h-24 w-24 md:w-32 gap-2 bg-background hover:bg-muted dark:bg-card">
+                <Paperclip className="h-5 w-5 md:h-6 md:w-6 text-orange-500" />
+                <span className="text-[10px] md:text-xs font-semibold whitespace-normal md:whitespace-nowrap text-center">Media Sharing</span>
+              </Button>
+            </div>
           </div>
         )}
       </div>

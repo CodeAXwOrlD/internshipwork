@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const WHATSAPP_API_URL = import.meta.env.VITE_WHATSAPP_API_BASE_URL || "https://app.whapihub.com/api";
+export const LEADNEST_BRIDGE_URL = import.meta.env.VITE_LEADNEST_SEND_MESSAGE || "https://ukxoyojiztuvaqgslegw.supabase.co/functions/v1/whatsapp-bridge";
 const DEFAULT_API_KEY = import.meta.env.VITE_WHATSAPP_API_KEY;
 
 export interface SendWhatsAppMessageParams {
@@ -32,20 +33,21 @@ export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams, api
       return { success: false, message: "API configuration missing" };
     }
 
-    // WhapiHub expects 'body' field for text messages and often /text endpoint
+    // We preserve the "Company Standard" format here as the Bridge expects it
     const requestBody = {
-      to: params.to.replace(/[+\s-]/g, ''),
-      body: params.body || params.text
+      to: params.to,
+      phoneNoId: params.phoneNoId,
+      application_id: params.application_id,
+      client_id: params.client_id,
+      type: "text",
+      text: params.body || params.text
     };
 
-    console.log("🚀 Sending WhatsApp Payload:", JSON.stringify(requestBody, null, 2));
-    
-    // If the URL doesn't end with /text or /messages, we might need to adjust it
-    let targetUrl = API_URL;
-    if (targetUrl.endsWith('/messages')) {
-      targetUrl = `${targetUrl}/text`;
-    }
+    // Ensure URL has trailing slash if we are hitting the root of the bridge
+    const targetUrl = API_URL.endsWith('whatsapp-bridge') ? `${API_URL}/` : API_URL;
 
+    console.log("🚀 Sending WhatsApp Payload to Bridge:", targetUrl);
+    
     const response = await fetch(targetUrl, {
       method: "POST",
       headers: {

@@ -250,7 +250,8 @@ export default function WhatsAppPage() {
   }, [client, selectedAppId]);
 
   const fetchRecentMessages = useCallback(async () => {
-    if (!client) return;
+    if (!client || !selectedAppId || selectedAppId === "00000000-0000-0000-0000-000000000000") return;
+    
     const { data } = await supabase
       .from("whatsapp_messages")
       .select("*")
@@ -313,6 +314,10 @@ export default function WhatsAppPage() {
   }, [client]);
 
   const fetchTemplates = useCallback(async (appId: string) => {
+    if (appId === "00000000-0000-0000-0000-000000000000") {
+      setTemplates([]);
+      return;
+    }
     try {
       setIsRefreshingTemplates(true);
       const bot = assignedBots.find(b => b.id === appId);
@@ -585,7 +590,7 @@ export default function WhatsAppPage() {
         </TabsContent>
 
         <TabsContent value="inbox" className="mt-0 border-none p-0 outline-none">
-          <WhatsAppInbox />
+          <WhatsAppInbox selectedAppId={selectedAppId} assignedBots={assignedBots} />
         </TabsContent>
 
         <TabsContent value="template" className="mt-0 border-none p-0 outline-none space-y-6">
@@ -597,91 +602,69 @@ export default function WhatsAppPage() {
           <div className="bg-card/50 border border-border rounded-xl p-3 md:p-4 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2 md:gap-3">
               <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
-                <Phone className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                <FileText className="h-4 w-4 md:h-5 md:w-5 text-primary" />
               </div>
-              <span className="font-bold text-sm md:text-lg">{assignedBots.length} Phone Numbers</span>
+              <span className="font-bold text-sm md:text-lg">{templates.length} Templates</span>
             </div>
-            <Button variant="outline" size="sm" className="bg-background hover:bg-muted font-bold text-xs h-8 md:h-9 px-2 md:px-3">
-              <RefreshCw className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2" />
-              <span className="hidden sm:inline">Sync Numbers</span>
-              <span className="sm:hidden">Sync</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-background hover:bg-muted font-bold text-xs h-8 md:h-9 px-2 md:px-3" 
+                onClick={() => selectedAppId && fetchTemplates(selectedAppId)}
+                disabled={isRefreshingTemplates}
+              >
+                <RefreshCw className={cn("h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2", isRefreshingTemplates && "animate-spin")} />
+                <span className="hidden sm:inline">Sync Templates</span>
+                <span className="sm:hidden">Sync</span>
+              </Button>
+              <Button 
+                size="sm" 
+                className="font-bold text-xs h-8 md:h-9 px-2 md:px-3"
+                onClick={() => setTemplateModalOpen(true)}
+                disabled={!selectedAppId}
+              >
+                <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2" />
+                <span>Create Template</span>
+              </Button>
+            </div>
           </div>
 
           <Card className="border-border/50 shadow-xl overflow-hidden rounded-2xl bg-card">
             <Table>
               <TableHeader className="bg-muted/30">
                 <TableRow className="hover:bg-transparent border-none">
-                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Verified Name</TableHead>
-                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Business App</TableHead>
-                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Phone Number</TableHead>
-                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest"># Phone Number ID</TableHead>
-                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Waba ID</TableHead>
-                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Quality</TableHead>
-                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Throughput</TableHead>
-                  <TableHead className="py-5 text-right"></TableHead>
+                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Name</TableHead>
+                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Category</TableHead>
+                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Language</TableHead>
+                  <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignedBots.length > 0 ? assignedBots.map((bot) => (
-                  <TableRow key={bot.id} className="border-border/30 hover:bg-muted/10 transition-colors">
-                    <TableCell className="py-6 font-black text-primary">{bot.name || "Unnamed Bot"}</TableCell>
+                {templates.length > 0 ? templates.map((tpl: any) => (
+                  <TableRow key={tpl.id || tpl.name} className="border-border/30 hover:bg-muted/10 transition-colors">
+                    <TableCell className="py-6 font-black text-primary">{tpl.name}</TableCell>
+                    <TableCell><Badge variant="outline">{tpl.category || 'MARKETING'}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary">{tpl.language || 'en_US'}</Badge></TableCell>
                     <TableCell>
                       <Badge className={cn(
                         "rounded-md py-1 px-3",
-                        bot.provider_type === 'api' 
-                          ? "bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20" 
-                          : "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20"
+                        (tpl.status || 'approved').toLowerCase() === 'approved' || (tpl.status || 'approved').toLowerCase() === 'ready'
+                          ? "bg-green-500/10 text-green-500 border-none"
+                          : (tpl.status || 'approved').toLowerCase() === 'rejected'
+                          ? "bg-red-500/10 text-red-500 border-none"
+                          : "bg-yellow-500/10 text-yellow-500 border-none"
                       )}>
-                        {bot.provider_type === 'api' ? <Zap className="h-3 w-3 mr-1.5 fill-current" /> : <MessageSquare className="h-3 w-3 mr-1.5 fill-current" />}
-                        {bot.provider_type === 'api' ? "Cloud API" : "Coexisting"}
+                        {(tpl.status || 'approved').toUpperCase()}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm font-bold text-slate-300">{bot.phone_number || "—"}</TableCell>
-                    <TableCell className="font-mono text-xs text-slate-500">{bot.phone_number_id || "—"}</TableCell>
-                    <TableCell className="font-mono text-xs text-slate-500">{bot.waba_id || "—"}</TableCell>
-                    <TableCell>
-                      <Badge className="bg-green-500 text-white font-bold text-[10px] py-0.5 px-3">GREEN</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-orange-500 text-white font-bold text-[10px] py-0.5 px-3">STANDARD</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 text-[10px] font-black border-none bg-muted/50 hover:bg-primary hover:text-white transition-all"
-                          onClick={() => {
-                            setSelectedAppId(bot.id);
-                            setTemplateModalOpen(true);
-                          }}
-                        >
-                          + Create
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 text-[10px] font-black border-none bg-muted/50 hover:bg-primary hover:text-white transition-all"
-                          onClick={() => {
-                            setSelectedAppId(bot.id);
-                            setMainTab("template"); // Logic to slide to templates if we had a detail view
-                          }}
-                        >
-                          <Eye className="h-3 w-3 mr-1" /> View
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </TableCell>
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-20 text-center">
+                    <TableCell colSpan={4} className="py-20 text-center">
                       <div className="flex flex-col items-center gap-2 opacity-20">
-                        <Phone className="h-12 w-12" />
-                        <p className="font-bold">No WhatsApp applications found</p>
+                        <FileText className="h-12 w-12" />
+                        <p className="font-bold">No templates available</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1078,7 +1061,7 @@ function SendMessageModal({
           language: selectedLanguage,
           mediaUrl: mediaUrl.trim() || undefined,
           bodyParams
-        });
+        }, bot.api_config?.api_key);
         if (result.success) {
           toast({ title: "Message sent!" });
         } else {

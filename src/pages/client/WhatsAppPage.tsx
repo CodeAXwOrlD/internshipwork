@@ -234,7 +234,7 @@ export default function WhatsAppPage() {
           api_config: {
             api_key: envApiKey,
             phone_id: envPhoneId,
-            panel_url: import.meta.env.VITE_WHATSAPP_API_BASE_URL || "https://app.whapihub.com/api"
+            base_url: import.meta.env.VITE_WHATSAPP_API_BASE_URL || "https://app.whapihub.com/api"
           },
           phone_number_id: envPhoneId,
           status: 'active',

@@ -656,7 +656,7 @@ function StatsCard({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 text-[10px] font-black text-primary hover:bg-primary/10 rounded-lg group-hover:translate-x-1 transition-transform"
+              className="h-8 px-2 text-[10px] font-black text-primary hover:bg-primary/10 hover:text-slate-900 rounded-lg group-hover:translate-x-1 transition-transform"
               onClick={onLinkClick}
             >
               {linkText}

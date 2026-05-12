@@ -201,7 +201,7 @@ const Index = () => {
                   </Button>
                 </Link>
                 <div className="w-full sm:w-auto mt-4 sm:mt-0">
-                  <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-white/20 hover:bg-white/5 text-slate-200 hover:text-white w-full sm:w-auto transition-opacity hover:border-white/40">
+                  <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full bg-white text-slate-950 hover:bg-white/10 text-black hover:text-white w-full sm:w-auto transition-opacity hover:border-white/50 font-semibold">
                     Book a Demo
                   </Button>
                 </div>

@@ -301,3 +301,75 @@ All colors MUST be HSL.
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
+
+/* Explicit scrollbar hide for overflow containers */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ─── WhatsApp Inbox Responsive Fixes ─── */
+
+/* Tablet breakpoint (768px - 1024px): Single column stacked layout */
+@media (max-width: 1024px) {
+  .wa-inbox-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+  }
+
+  .wa-inbox-list-panel {
+    width: 100% !important;
+    max-width: 100%;
+    flex: 1;
+    min-height: 0;
+    border-right: none;
+  }
+
+  .wa-inbox-chat-panel {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+/* Ensure proper flex layout for chat area */
+.wa-chat-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Ensure message input is always visible and at the bottom */
+@media (max-width: 1024px) {
+  .wa-message-input-container {
+    position: relative !important;
+    flex-shrink: 0;
+  }
+}
+
+/* Mobile: prevent overflow on chat bubbles */
+@media (max-width: 480px) {
+  .wa-message-bubble {
+    max-width: 85% !important;
+  }
+
+  .wa-inbox-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Fix flex overflow issues */
+.flex-1-min-h-0 {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

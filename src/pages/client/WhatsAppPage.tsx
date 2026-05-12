@@ -558,7 +558,7 @@ export default function WhatsAppPage() {
             mainTab === "inbox" && "hidden md:block",
           )}
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-3">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-green-500/10 shadow-inner shrink-0">
                 <MessageCircle className="h-7 w-7 text-[#25D366]" />
@@ -576,7 +576,7 @@ export default function WhatsAppPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pl-0 sm:pl-0">
+            <div className="flex flex-wrap items-center gap-2">
               {assignedBots.length > 1 && (
                 <Select
                   value={selectedAppId || ""}

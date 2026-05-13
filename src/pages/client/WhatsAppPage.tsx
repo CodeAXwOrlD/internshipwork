@@ -261,6 +261,8 @@ export default function WhatsAppPage() {
 
   const fetchAssignedBots = useCallback(async () => {
     if (!client) return;
+    console.log("🔍 Client ID:", client.id);
+    console.log("🔍 Client user_id:", client.user_id);
 
     // 1. Try to find bots directly assigned to this client
     const { data: directBots, error } = await (
@@ -977,7 +979,7 @@ export default function WhatsAppPage() {
                     size="sm"
                     className="font-bold text-xs h-8 md:h-9 px-2 md:px-3"
                     onClick={() => setTemplateModalOpen(true)}
-                    disabled={!selectedAppId}
+                    disabled={!selectedAppId || selectedAppId === "00000000-0000-0000-0000-000000000000"}
                   >
                     <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2" />
                     <span>Create Template</span>
@@ -1031,11 +1033,11 @@ export default function WhatsAppPage() {
                                   (tpl.status || "approved").toLowerCase() ===
                                     "approved" ||
                                     (tpl.status || "approved").toLowerCase() ===
-                                      "ready"
+                                    "ready"
                                     ? "bg-green-500/10 text-green-500 border-none"
                                     : (
-                                          tpl.status || "approved"
-                                        ).toLowerCase() === "rejected"
+                                      tpl.status || "approved"
+                                    ).toLowerCase() === "rejected"
                                       ? "bg-red-500/10 text-red-500 border-none"
                                       : "bg-yellow-500/10 text-yellow-500 border-none",
                                 )}
@@ -1726,15 +1728,15 @@ function SendMessageModal({
           </div>
           {(requiresMedia ||
             ["image", "video", "audio", "document"].includes(messageType)) && (
-            <div>
-              <Label>{(headerFormat || messageType).toUpperCase()} URL</Label>
-              <Input
-                placeholder="https://..."
-                value={mediaUrl}
-                onChange={(e) => setMediaUrl(e.target.value)}
-              />
-            </div>
-          )}
+              <div>
+                <Label>{(headerFormat || messageType).toUpperCase()} URL</Label>
+                <Input
+                  placeholder="https://..."
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                />
+              </div>
+            )}
           {messageType === "template" && (
             <div>
               <Label>Template</Label>

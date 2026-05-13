@@ -47,7 +47,7 @@ export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams, api
     const targetUrl = API_URL.endsWith('whatsapp-bridge') ? `${API_URL}/` : API_URL;
 
     console.log("🚀 Sending WhatsApp Payload to Bridge:", targetUrl);
-    
+
     const response = await fetch(targetUrl, {
       method: "POST",
       headers: {
@@ -68,7 +68,7 @@ export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams, api
       console.error("Non-JSON response received:", text);
       return { success: false, message: `Server error: ${response.status}` };
     }
-    
+
     if (result.success || response.ok) {
       console.log("📥 LeadNest API Response:", result);
       // Log the message to our Supabase database (only if client_id is present)
@@ -116,10 +116,10 @@ export async function updateMessageStatus(messageId: string, dbMessageId: string
     if (!targetUrl.endsWith("/")) targetUrl += "/";
     targetUrl += messageId;
 
-    // In development, use the local proxy to avoid CORS
-    if (import.meta.env.DEV) {
-      targetUrl = targetUrl.replace("https://app.whapihub.com", "/whapi");
-    }
+    // // In development, use the local proxy to avoid CORS
+    // if (import.meta.env.DEV) {
+    //   targetUrl = targetUrl.replace("https://app.whapihub.com", "/whapi");
+    // }
 
     const response = await fetch(targetUrl, {
       headers: {
@@ -174,42 +174,21 @@ export async function createWhatsAppTemplate(applicationId: string, templateData
 
   if (botError || !bot) throw new Error("WhatsApp bot not found");
 
-  // 2. Call REAL API to create template on Meta/WhatsApp platform
-  const token = bot.api_config.api_key;
-  let targetUrl = WHATSAPP_API_URL;
-
-  // In development, use the local proxy to avoid CORS
-  if (import.meta.env.DEV) {
-    targetUrl = targetUrl.replace("https://app.whapihub.com", "/whapi");
-  }
-
-  // Construct templates URL
-  targetUrl = targetUrl.endsWith("/") ? targetUrl + "message_templates" : targetUrl + "/message_templates";
-
-  const apiPayload = {
-    name: templateData.name.trim().toLowerCase().replace(/\s+/g, '_'),
-    category: templateData.category || 'MARKETING',
-    language: templateData.language || 'en_US',
-    components: templateData.components || []
-  };
-
-  console.log("📝 Creating Template on WhatsApp:", JSON.stringify(apiPayload, null, 2));
-
-  const apiResponse = await fetch(targetUrl, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(apiPayload),
-  });
-
-  const apiResult = await apiResponse.json();
-  console.log("📥 Create Template Response:", apiResult);
-
-  if (!apiResponse.ok) {
-    throw new Error(apiResult?.message || apiResult?.error || "Failed to create template on WhatsApp platform");
-  }
+ // ─── IMPORTANT NOTE FOR FUTURE DEVELOPERS ───────────────────────────────────
+// WhapiHub does NOT support template creation via REST API.
+// Templates must be created manually in Meta Business Manager:
+// https://business.facebook.com/wa/manage/message-templates/
+//
+// If you switch from WhapiHub to another provider (e.g. Twilio, 360Dialog):
+// → Check if new provider supports template creation API
+// → If yes, add POST call here with new provider's endpoint
+// → If no, keep this comment and continue using Meta Business Manager
+//
+// WhapiHub only supports SENDING existing approved templates via:
+// POST https://app.whapihub.com/api/v2/whatsapp-business/messages
+// with body: { type: "template", name: "template_name", language: "en_US" }
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("📝 Saving template locally — create on Meta Business Manager for WhatsApp approval");
 
   // 3. Save to local database for history/caching
   // Get current user for attribution
@@ -220,6 +199,7 @@ export async function createWhatsAppTemplate(applicationId: string, templateData
     .select("id")
     .eq("user_id", user?.id)
     .maybeSingle();
+  
 
   const { data, error } = await (supabase
     .from("whatsapp_templates" as any) as any)
@@ -255,84 +235,54 @@ export async function syncWhatsAppTemplates(applicationId: string) {
     .single();
 
   if (botError || !bot || !bot.api_config?.api_key) {
-    throw new Error("Bot API configuration missing or invalid");
+    throw new Error("Bot API configurat`ion missing or invalid");
   }
 
-  const token = bot.api_config.api_key;
-  let targetUrl = WHATSAPP_API_URL;
+// ─── IMPORTANT NOTE FOR FUTURE DEVELOPERS ───────────────────────────────────
+// WhapiHub does NOT have a GET templates endpoint.
+// Templates synced here come from local DB only.
+// To get approved templates, check Meta Business Manager directly.
+// If provider changes, update this function with new provider's GET endpoint.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("📋 Fetching templates from local DB only — WhapiHub has no list templates endpoint");
+return [];
 
-  // In development, use the local proxy to avoid CORS
-  if (import.meta.env.DEV) {
-    targetUrl = targetUrl.replace("https://app.whapihub.com", "/whapi");
-  }
+//   // Get current user for attribution
+//   const { data: { user } } = await supabase.auth.getUser();
 
-  // Construct templates list URL
-  // WhapiHub v2 uses /message_templates for both POST and GET (list)
-  targetUrl = targetUrl.endsWith("/") ? targetUrl + "message_templates" : targetUrl + "/message_templates";
+//   // Find linked client
+//   const { data: client } = await (supabase
+//     .from("clients" as any) as any)
+//     .select("id")
+//     .eq("user_id", user?.id)
+//     .maybeSingle();
 
-  const response = await fetch(targetUrl, {
-    headers: {
-      "Authorization": `Bearer ${token}`,
-    },
-  });
+//   // Update local DB (upsert based on name)
+//   for (const tpl of externalTemplates) {
+//     // Only sync approved templates to avoid draft errors
+//     const status = (tpl.status || "approved").toLowerCase();
+//     if (status !== 'approved' && status !== 'ready') continue;
 
-  if (!response.ok) {
-    let errorMessage = "Failed to fetch templates from WhatsApp API";
-    try {
-      const err = await response.json();
-      errorMessage = err?.message || errorMessage;
-    } catch (e) {
-      errorMessage = `API Error ${response.status}: ${response.statusText}`;
-    }
-    throw new Error(errorMessage);
-  }
+//     const tplName = (tpl.name || tpl.template_name || "").trim();
+//     if (!tplName) continue;
 
-  let result;
-  try {
-    result = await response.json();
-  } catch (e) {
-    throw new Error("Invalid JSON response from WhatsApp API");
-  }
-  const externalTemplates = result?.templates || result?.data || [];
+//     const tplLang = (tpl.language || tpl.language_code || "en_US").trim();
 
-  console.log(`🔍 Found ${externalTemplates.length} templates from API`);
+//     const { error: upsertError } = await (supabase.from("whatsapp_templates" as any) as any).upsert({
+//       application_id: applicationId,
+//       client_id: client?.id || null,
+//       name: tplName,
+//       category: tpl.category || 'MARKETING',
+//       language: tplLang, // Store exactly what the API says
+//       components: tpl.components || [],
+//       status: status,
+//       created_by: user?.id
+//     }, { onConflict: 'application_id,name' });
 
-  // Get current user for attribution
-  const { data: { user } } = await supabase.auth.getUser();
+//     if (upsertError) console.warn(`Failed to sync template ${tplName}:`, upsertError);
+//   }
 
-  // Find linked client
-  const { data: client } = await (supabase
-    .from("clients" as any) as any)
-    .select("id")
-    .eq("user_id", user?.id)
-    .maybeSingle();
-
-  // Update local DB (upsert based on name)
-  for (const tpl of externalTemplates) {
-    // Only sync approved templates to avoid draft errors
-    const status = (tpl.status || "approved").toLowerCase();
-    if (status !== 'approved' && status !== 'ready') continue;
-
-    const tplName = (tpl.name || tpl.template_name || "").trim();
-    if (!tplName) continue;
-
-    const tplLang = (tpl.language || tpl.language_code || "en_US").trim();
-
-    const { error: upsertError } = await (supabase.from("whatsapp_templates" as any) as any).upsert({
-      application_id: applicationId,
-      client_id: client?.id || null,
-      name: tplName,
-      category: tpl.category || 'MARKETING',
-      language: tplLang, // Store exactly what the API says
-      components: tpl.components || [],
-      status: status,
-      created_by: user?.id
-    }, { onConflict: 'application_id,name' });
-
-    if (upsertError) console.warn(`Failed to sync template ${tplName}:`, upsertError);
-  }
-
-  return externalTemplates;
+//   return externalTemplates;
 }
 
 /**
@@ -346,5 +296,4 @@ export async function deleteWhatsAppMessage(messageId: string) {
 
   if (error) throw error;
   return true;
-}
-
+  }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { Outlet, useLocation } from "react-router-dom";
 import ClientSidebar from "./ClientSidebar";
 import ClientHeader from "./ClientHeader";
@@ -42,7 +43,11 @@ function ClientLayoutInner() {
         onToggleCollapse={() => setCollapsed(c => !c)}
       />
       
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col h-screen overflow-hidden",
+        // shift the main content to the right on md+ for the tablet rail and lg+ for the expanded sidebar
+        collapsed ? "md:ml-20 lg:ml-20" : "md:ml-20 lg:ml-64"
+      )}>
         <ClientHeader
           onMenuClick={() => setSidebarOpen(true)}
           collapsed={collapsed}
@@ -53,7 +58,7 @@ function ClientLayoutInner() {
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto pt-14 md:pt-16 pb-16 md:pb-0"
         >
-          <div className="p-4 md:p-6 max-w-[1600px] mx-auto">
+          <div className="p-4 md:p-5 lg:p-6 max-w-[1100px] lg:max-w-[1600px] mx-auto">
             <Outlet />
           </div>
         </main>

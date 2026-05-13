@@ -100,9 +100,11 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-sidebar flex flex-col border-r border-sidebar-border overflow-hidden transition-[width] duration-300 ease-in-out",
-          "md:translate-x-0 md:static md:z-0",
+          // Keep a compact rail on tablets (md) and only expand on large screens
+          "md:translate-x-0 md:w-20",
+          collapsed ? "lg:w-20" : "lg:w-64",
           open ? "translate-x-0" : "-translate-x-full md:-translate-x-0",
-          collapsed ? "w-20" : "w-64"
+          "w-64"
         )}
       >
         {/* Header */}
@@ -118,7 +120,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
             <div
               className={cn(
                 "flex flex-col min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300",
-                collapsed ? "opacity-0 w-0 ml-0" : "opacity-100 w-auto ml-3"
+                collapsed ? "hidden" : "hidden lg:flex ml-3"
               )}
             >
               <span className="text-xl font-black text-white tracking-tighter leading-none">PIXORA</span>
@@ -134,7 +136,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
             {!collapsed && (
               <button
                 onClick={onToggleCollapse}
-                className="hidden md:flex p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                className="hidden lg:flex p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                 title="Collapse sidebar"
               >
                 <ChevronsLeft className="h-4 w-4" />
@@ -145,7 +147,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
 
         {/* If collapsed, show the expand toggle right below header or inline */}
         {collapsed && (
-          <div className="hidden md:flex justify-center border-b border-white/5 pb-4 pt-2">
+          <div className="hidden lg:flex justify-center border-b border-white/5 pb-4 pt-2">
             <button
               onClick={onToggleCollapse}
               className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
@@ -184,7 +186,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                 <span
                   className={cn(
                     "truncate whitespace-nowrap overflow-hidden transition-all duration-300",
-                    collapsed ? "opacity-0 w-0" : "opacity-100 w-[140px]"
+                    collapsed ? "hidden" : "hidden lg:inline-block"
                   )}
                 >
                   {item.title}

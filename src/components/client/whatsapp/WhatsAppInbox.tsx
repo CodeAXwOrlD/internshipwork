@@ -379,7 +379,7 @@ export default function WhatsAppInbox({
             variant: "destructive",
           });
       } else {
-        const { error } = await supabase.from("whatsapp_messages").insert({
+        const { error } = await (supabase.from("whatsapp_messages") as any).insert({
           client_id: client.id,
           application_id: selectedAppId,
           phone_number: activeChatId,
@@ -388,7 +388,7 @@ export default function WhatsAppInbox({
           direction: "outbound",
           status: "queued",
           sent_at: new Date().toISOString(),
-        });
+        } as any);
         if (error) throw error;
         setMessageInput("");
       }
@@ -413,12 +413,20 @@ export default function WhatsAppInbox({
     [chats, searchQuery],
   );
 
+  useEffect(() => {
+    if (isMobileMode) return;
+    if (activeChatId) return;
+    if (filteredChats.length === 0) return;
+
+    setActiveChatId(filteredChats[0].id);
+  }, [isMobileMode, activeChatId, filteredChats]);
+
   const isOutboundMessage = (msg: any) =>
     msg.direction === "outbound" ||
     ["sent", "delivered", "read", "queued", "failed"].includes(msg.status);
 
   return (
-    <div className="flex h-full w-full min-w-0 overflow-hidden flex-1 flex-col lg:rounded-3xl lg:border lg:border-slate-200 bg-white lg:shadow-2xl">
+    <div className="flex h-full w-full min-w-0 overflow-hidden flex-1 flex-col xl:flex-row lg:rounded-3xl lg:border lg:border-slate-200 bg-white lg:shadow-2xl">
       {/* ── LEFT PANEL: Contact list ─────────────────────────── */}
       {showListPanel && (
         <div
@@ -426,7 +434,7 @@ export default function WhatsAppInbox({
             "flex flex-col bg-white border-r border-slate-200/60 min-w-0",
             isMobileMode
               ? "w-full flex-1 min-h-0"
-              : "w-56 xl:w-72 shrink-0 h-full",
+              : "w-full xl:w-56 2xl:w-72 shrink-0 h-full",
           )}
         >
           {/* Header */}
@@ -535,8 +543,8 @@ export default function WhatsAppInbox({
       {showChatPanel && (
         <div
           className={cn(
-            "flex flex-col h-full overflow-hidden bg-slate-50/30",
-            isMobileMode ? "w-full h-full" : "flex-1 min-w-0",
+            "flex flex-col h-full overflow-hidden bg-slate-50/30 min-w-0",
+            isMobileMode ? "w-full h-full" : "flex-1",
           )}
         >
           <AnimatePresence mode="wait">
@@ -828,67 +836,26 @@ export default function WhatsAppInbox({
                 </div>
               </motion.div>
             ) : (
-              /* Welcome – desktop only, when no chat is open */
-              !isMobileMode && (
-                <motion.div
-                  key="welcome"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-1 h-full flex-col items-center justify-center px-6 text-center"
-                >
-                  <div className="mb-8 relative">
-                    <div className="absolute -inset-4 bg-blue-500/10 rounded-[40px] blur-xl animate-pulse" />
-                    <div className="relative h-20 w-20 flex items-center justify-center rounded-[32px] border border-blue-100 bg-white shadow-xl shadow-blue-500/5">
-                      <MessageSquare className="h-10 w-10 text-blue-600 stroke-[1.5]" />
-                    </div>
+              <motion.div
+                key="welcome"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-1 h-full min-h-[520px] items-center justify-center p-6"
+              >
+                <div className="w-full max-w-xl rounded-[28px] border border-slate-200 bg-white p-8 text-center shadow-xl shadow-slate-200/60">
+                  <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[24px] bg-blue-50 text-blue-600">
+                    <MessageSquare className="h-8 w-8" />
                   </div>
-                  <h2 className="mb-3 text-3xl font-black text-slate-900 tracking-tight">
-                    Welcome to Inbox!
+                  <h2 className="mb-2 text-2xl font-black text-slate-900 tracking-tight">
+                    No conversation selected
                   </h2>
-                  <p className="mb-10 max-w-sm text-sm font-medium leading-relaxed text-slate-500">
-                    Select a contact from the sidebar to start a secure
-                    conversation. All your messages and media will appear here
-                    in real-time.
+                  <p className="mx-auto max-w-sm text-sm font-medium leading-relaxed text-slate-500">
+                    Choose a contact from the list to view the chat thread and
+                    continue the conversation.
                   </p>
-                  <div className="flex flex-wrap justify-center gap-4">
-                    {[
-                      {
-                        icon: MessageSquare,
-                        label: "Real-time Chat",
-                        desc: "Instant sync",
-                      },
-                      {
-                        icon: Bot,
-                        label: "AI Templates",
-                        desc: "Smart replies",
-                      },
-                      {
-                        icon: Paperclip,
-                        label: "Media Sharing",
-                        desc: "Docs & Images",
-                      },
-                    ].map((item) => (
-                      <div key={item.label} className="group relative w-32">
-                        <div className="absolute -inset-2 rounded-3xl bg-slate-100/50 opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                        <div className="relative flex flex-col items-center gap-3 p-4">
-                          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-sm transition-transform duration-300 group-hover:-translate-y-1">
-                            <item.icon className="h-6 w-6 text-blue-600" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-[11px] font-bold text-slate-900">
-                              {item.label}
-                            </p>
-                            <p className="text-[9px] font-medium text-slate-400">
-                              {item.desc}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>

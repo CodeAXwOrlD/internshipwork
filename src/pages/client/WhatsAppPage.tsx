@@ -103,6 +103,7 @@ import {
 import Papa from "papaparse";
 import { motion, AnimatePresence } from "framer-motion";
 import WhatsAppInbox from "@/components/client/whatsapp/WhatsAppInbox";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 /* ─── Types ─── */
 interface WACampaign {
@@ -191,6 +192,8 @@ export default function WhatsAppPage() {
   const [assignedBots, setAssignedBots] = useState<any[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<any | null>(null);
 
   // Message Sending State
   const [phone, setPhone] = useState("");
@@ -445,6 +448,30 @@ export default function WhatsAppPage() {
     [assignedBots],
   );
 
+  const handleDeleteTemplate = useCallback(async () => {
+    if (!templateToDelete?.id || !selectedAppId) return;
+
+    try {
+      const { error } = await supabase
+        .from("whatsapp_templates" as any)
+        .delete()
+        .eq("id", templateToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: "Template deleted" });
+      setDeleteTemplateOpen(false);
+      setTemplateToDelete(null);
+      await fetchTemplates(selectedAppId);
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Unable to delete template.",
+        variant: "destructive",
+      });
+    }
+  }, [fetchTemplates, selectedAppId, templateToDelete, toast]);
+
   const fetchAll = useCallback(async () => {
     if (!client) return;
     setIsLoading(true);
@@ -619,7 +646,7 @@ export default function WhatsAppPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-10 px-4 text-xs font-bold rounded-xl border-slate-200 bg-white hover:bg-slate-50 transition-all active:scale-95"
+                className="h-10 px-4 text-xs font-bold rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-blue-700 transition-all active:scale-95"
                 onClick={() => setCampaignWizardOpen(true)}
                 disabled={assignedBots.length === 0}
               >
@@ -960,7 +987,7 @@ export default function WhatsAppPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="bg-background hover:bg-muted font-bold text-xs h-8 md:h-9 px-2 md:px-3"
+                    className="bg-background text-foreground border-border hover:bg-primary/10 hover:text-foreground font-bold text-xs h-8 md:h-9 px-2 md:px-3 transition-colors"
                     onClick={() =>
                       selectedAppId && fetchTemplates(selectedAppId)
                     }
@@ -1004,6 +1031,9 @@ export default function WhatsAppPage() {
                         <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest">
                           Status
                         </TableHead>
+                        <TableHead className="py-5 font-bold text-xs text-muted-foreground uppercase tracking-widest text-right">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1045,11 +1075,25 @@ export default function WhatsAppPage() {
                                 {(tpl.status || "approved").toUpperCase()}
                               </Badge>
                             </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => {
+                                  setTemplateToDelete(tpl);
+                                  setDeleteTemplateOpen(true);
+                                }}
+                                aria-label={`Delete template ${tpl.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} className="py-20 text-center">
+                          <TableCell colSpan={5} className="py-20 text-center">
                             <div className="flex flex-col items-center gap-2 opacity-20">
                               <FileText className="h-12 w-12" />
                               <p className="font-bold">
@@ -1110,6 +1154,20 @@ export default function WhatsAppPage() {
         onOpenChange={setTemplateModalOpen}
         selectedAppId={selectedAppId}
         onCreated={() => selectedAppId && fetchTemplates(selectedAppId)}
+      />
+
+      <ConfirmDialog
+        open={deleteTemplateOpen}
+        onOpenChange={(open) => {
+          setDeleteTemplateOpen(open);
+          if (!open) setTemplateToDelete(null);
+        }}
+        title="Delete template?"
+        description={`This will permanently remove ${templateToDelete?.name || "this template"} from your template list.`}
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        variant="destructive"
+        onConfirm={handleDeleteTemplate}
       />
 
       <CreateCampaignWizardWA
@@ -1835,6 +1893,32 @@ function CreateTemplateModalWA({
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const normalizedName = useMemo(
+    () => name.trim().toLowerCase().replace(/\s+/g, "_"),
+    [name],
+  );
+
+  const bodyVariables = useMemo(
+    () => Array.from(new Set(body.match(/\{\{\d+\}\}/g) || [])),
+    [body],
+  );
+
+  const previewSegments = useMemo(() => {
+    const previewText =
+      body.trim() ||
+      "Hello {{1}}, your request is ready. Reply with {{2}} if you need help.";
+    return previewText.split(/(\{\{\d+\}\})/g).filter(Boolean);
+  }, [body]);
+
+  const headerPreviewLabel = useMemo(() => {
+    if (headerType === "TEXT") return headerText.trim() || "Header text";
+    if (headerType === "IMAGE") return "Image header";
+    if (headerType === "VIDEO") return "Video header";
+    if (headerType === "AUDIO") return "Audio header";
+    if (headerType === "DOCUMENT") return "Document header";
+    return "No header";
+  }, [headerType, headerText]);
+
   const reset = () => {
     setName("");
     setCategory("MARKETING");
@@ -1885,92 +1969,350 @@ function CreateTemplateModalWA({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Create Template</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label>Name</Label>
-            <Input
-              placeholder="welcome_msg"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MARKETING">Marketing</SelectItem>
-                  <SelectItem value="UTILITY">Utility</SelectItem>
-                  <SelectItem value="AUTHENTICATION">Auth</SelectItem>
-                </SelectContent>
-              </Select>
+      <DialogContent className="w-[94vw] max-w-6xl overflow-hidden border-slate-200/70 bg-slate-50 p-0 shadow-2xl sm:w-[92vw] md:w-[90vw]">
+        <div className="max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 px-4 py-4 text-white sm:px-6 sm:py-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-emerald-100">
+                  <Eye className="h-3.5 w-3.5" />
+                  Live preview
+                </div>
+                <DialogTitle className="text-2xl font-semibold tracking-tight text-white">
+                  Create Template
+                </DialogTitle>
+                <DialogDescription className="max-w-2xl text-sm text-slate-300">
+                  Build a polished WhatsApp template with a real-time preview so
+                  you can check the final look before submitting.
+                </DialogDescription>
+              </div>
+
+              <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-200 md:flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-200">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-medium text-white">Approval-ready layout</p>
+                  <p className="text-slate-300">See the message structure live.</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>Language</Label>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en_US">English (US)</SelectItem>
-                  <SelectItem value="hi">Hindi</SelectItem>
-                </SelectContent>
-              </Select>
+          </DialogHeader>
+
+          <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="min-w-0 space-y-5 border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:border-b-0 lg:border-r">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                <div className="min-w-0 space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Template name
+                  </Label>
+                  <Input
+                    placeholder="welcome_msg"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-base shadow-sm transition-colors focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                  />
+                  <p className="max-w-md text-xs leading-5 text-slate-500">
+                    Use lowercase letters, numbers, and underscores for a clean
+                    SaaS-style naming convention.
+                  </p>
+                </div>
+
+                <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                    <span>Template health</span>
+                    <Badge
+                      variant="secondary"
+                      className="rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                    >
+                      Ready
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <div className="flex items-start justify-between gap-3 rounded-xl bg-white/70 px-3 py-2">
+                      <span className="text-slate-600">Slug</span>
+                      <span className="max-w-[15rem] break-all text-right font-mono text-xs text-slate-900 sm:max-w-[18rem]">
+                        {normalizedName || "welcome_msg"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-slate-600">
+                      <span>Variables</span>
+                      <span className="font-medium text-slate-900">
+                        {bodyVariables.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-slate-600">
+                      <span>Status</span>
+                      <span className="flex items-center gap-1 font-medium text-emerald-700">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Draft
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Category
+                  </Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MARKETING">Marketing</SelectItem>
+                      <SelectItem value="UTILITY">Utility</SelectItem>
+                      <SelectItem value="AUTHENTICATION">Auth</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Language
+                  </Label>
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en_US">English (US)</SelectItem>
+                      <SelectItem value="hi">Hindi</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Header
+                    </Label>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Add an optional message header to make the template more engaging.
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700"
+                  >
+                    {headerType}
+                  </Badge>
+                </div>
+                <Select value={headerType} onValueChange={setHeaderType}>
+                  <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm focus:ring-emerald-500">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">None</SelectItem>
+                    <SelectItem value="TEXT">Text</SelectItem>
+                    <SelectItem value="IMAGE">Image</SelectItem>
+                    <SelectItem value="VIDEO">Video</SelectItem>
+                    <SelectItem value="AUDIO">Audio</SelectItem>
+                    <SelectItem value="DOCUMENT">Doc</SelectItem>
+                  </SelectContent>
+                </Select>
+                {headerType !== "NONE" && (
+                  <Input
+                    className="mt-3 h-12 rounded-2xl border-slate-200 bg-white shadow-sm focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                    placeholder="Header text or media URL"
+                    value={headerText}
+                    onChange={(e) => setHeaderText(e.target.value)}
+                  />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Body
+                  </Label>
+                  <span className="text-xs text-slate-500">
+                    {body.length}/1024 characters
+                  </span>
+                </div>
+                <Textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={7}
+                  placeholder="Hello {{1}}, welcome to your new workspace."
+                  className="min-h-[180px] rounded-3xl border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-slate-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                />
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
+                  <p className="font-medium">Quick tip</p>
+                  <p className="mt-1 text-xs leading-5 text-emerald-800/90">
+                    Keep the first line clear and friendly. Variables like
+                    <span className="mx-1 rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-emerald-700">
+                      {'{{1}}'}
+                    </span>
+                    are highlighted in the preview so you can see exactly how
+                    personalization will land.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-900">
+                    Template snapshot
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {normalizedName || "welcome_msg"} · {bodyVariables.length} dynamic field(s)
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="rounded-full bg-slate-200 text-slate-700 hover:bg-slate-200">
+                    {category}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
+                    {language === "en_US" ? "English (US)" : language}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-0 space-y-5 bg-slate-100 px-4 py-5 sm:px-6 sm:py-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Live preview</h3>
+                  <p className="text-sm text-slate-500">
+                    Updated instantly as you type.
+                  </p>
+                </div>
+                <Badge className="rounded-full bg-slate-900 px-3 py-1 text-xs text-white hover:bg-slate-900">
+                  Draft mode
+                </Badge>
+              </div>
+
+              <div className="mx-auto w-full max-w-[22rem] overflow-x-auto rounded-[2rem] border border-slate-200 bg-slate-950 p-2.5 shadow-2xl sm:max-w-[24rem] lg:max-w-sm xl:max-w-md">
+                <div className="rounded-[1.65rem] bg-[#ECE5DD] p-3">
+                  <div className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-black/5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-sm font-semibold text-white shadow-md shadow-emerald-500/30">
+                        WA
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          WhatsApp Business
+                        </p>
+                        <p className="text-xs text-slate-500">Template preview</p>
+                      </div>
+                    </div>
+                    <div className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-medium text-emerald-700">
+                      Draft
+                    </div>
+                  </div>
+
+                  <div className="ml-auto w-full max-w-full overflow-x-auto rounded-[1.5rem] rounded-tr-md bg-white p-3.5 shadow-sm ring-1 ring-black/5 sm:p-4">
+                    <div className="flex items-start justify-between gap-3 text-[11px] text-slate-500">
+                      <span className="font-medium text-emerald-600">
+                        {category}
+                      </span>
+                      <span className="max-w-[55%] break-all font-mono text-[10px] text-slate-400">
+                        {normalizedName || "welcome_msg"}
+                      </span>
+                    </div>
+
+                    {headerType !== "NONE" && (
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                          <Phone className="h-3.5 w-3.5 text-emerald-600" />
+                          Header preview
+                        </div>
+                        <p className="mt-2 break-all text-sm font-medium text-slate-900">
+                          {headerPreviewLabel}
+                        </p>
+                        {headerType === "TEXT" && headerText.trim() && (
+                          <p className="mt-1 break-all text-xs text-slate-500">
+                            {headerText.trim()}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3 overflow-x-auto break-words whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                      {previewSegments.map((segment, index) =>
+                        /\{\{\d+\}\}/.test(segment) ? (
+                          <span
+                            key={`${segment}-${index}`}
+                            className="mx-0.5 inline-block max-w-full break-all rounded-md bg-emerald-50 px-1.5 py-0.5 font-mono text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"
+                          >
+                            {segment}
+                          </span>
+                        ) : (
+                          <span key={`${segment}-${index}`} className="break-all">
+                            {segment}
+                          </span>
+                        ),
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-100">
+                        {language === "en_US" ? "English (US)" : language}
+                      </Badge>
+                      <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
+                        {bodyVariables.length} variable{bodyVariables.length === 1 ? "" : "s"}
+                      </Badge>
+                      <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
+                        {headerType === "NONE" ? "No header" : headerType}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-end text-[11px] text-slate-500">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 shadow-sm">
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                      Live sync enabled
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Personalization
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    Variables render clearly so your team can spot dynamic fields fast.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Premium feel
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    Clean spacing, gradients, and hierarchy make the modal feel SaaS-ready.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Approval ready
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    The structure mirrors how reviewers see the template in WhatsApp.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="p-3 bg-muted/30 rounded border border-dashed">
-            <Label className="text-[10px] uppercase">Header</Label>
-            <Select value={headerType} onValueChange={setHeaderType}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="NONE">None</SelectItem>
-                <SelectItem value="TEXT">Text</SelectItem>
-                <SelectItem value="IMAGE">Image</SelectItem>
-                <SelectItem value="VIDEO">Video</SelectItem>
-                <SelectItem value="AUDIO">Audio</SelectItem>
-                <SelectItem value="DOCUMENT">Doc</SelectItem>
-              </SelectContent>
-            </Select>
-            {headerType !== "NONE" && (
-              <Input
-                className="h-8 text-xs mt-1"
-                placeholder="Header text or Media URL"
-                value={headerText}
-                onChange={(e) => setHeaderText(e.target.value)}
-              />
-            )}
-          </div>
-          <div>
-            <Label>Body</Label>
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={4}
-              placeholder="Hello {{1}}..."
-            />
-          </div>
+
+          <DialogFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-full px-5 sm:w-auto">
+              Cancel
+            </Button>
+            <Button
+              disabled={isSubmitting}
+              onClick={handleSubmit}
+              className="w-full rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-6 text-white shadow-lg shadow-emerald-500/25 transition-transform hover:scale-[1.01] hover:from-emerald-600 hover:to-green-700 sm:w-auto"
+            >
+              {isSubmitting ? "Submitting..." : "Create Template"}
+            </Button>
+          </DialogFooter>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            disabled={isSubmitting}
-            onClick={handleSubmit}
-            className="bg-green-500 text-white"
-          >
-            {isSubmitting ? "Submitting..." : "Create Template"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

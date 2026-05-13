@@ -84,37 +84,37 @@ const Index = () => {
     <div className="flex min-h-screen flex-col bg-slate-950 font-sans text-slate-50 selection:bg-primary/30 overflow-hidden">
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <motion.div 
+        <motion.div
           animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.2, 0.3, 0.2],
+            /* Keep only subtle opacity shifts to avoid costly transforms */
+            opacity: [0.22, 0.30, 0.22],
           }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] rounded-full bg-primary/20 blur-[120px]" 
+          transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[-5%] left-[-5%] h-[30%] w-[30%] rounded-full bg-primary/18 blur-[48px] gpu-accel"
         />
-        <motion.div 
+        <motion.div
           animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.2, 0.1],
+            opacity: [0.12, 0.18, 0.12],
           }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[-10%] right-[-10%] h-[40%] w-[40%] rounded-full bg-blue-600/20 blur-[120px]" 
+          transition={{ duration: 36, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-[-5%] right-[-5%] h-[28%] w-[28%] rounded-full bg-blue-600/16 blur-[48px] gpu-accel"
         />
-        <div className="absolute top-[40%] left-[60%] h-[30%] w-[30%] rounded-full bg-purple-600/10 blur-[100px]" />
+        <div className="absolute top-[40%] left-[60%] h-[20%] w-[20%] rounded-full bg-purple-600/8 blur-[40px]" />
         
         {/* Subtle grid pattern overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] opacity-10" />
       </div>
 
       {/* Header */}
-      <header className="relative z-50 w-full border-b border-white/5 bg-slate-950/50 backdrop-blur-xl">
+      <header className="relative z-50 w-full border-b border-white/5 bg-slate-950/60">
         <div className="container mx-auto flex h-20 items-center justify-between px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
-            <motion.div 
-              whileHover={{ rotate: 10, scale: 1.1 }}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600 shadow-lg shadow-primary/20"
+            <motion.div
+              /* micro-interaction only; avoid rotate to reduce repaints */
+              whileHover={{ scale: 1.02 }}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600"
             >
-             <img src="/logo.png" alt="Logo" className="h-10 w-10" />
+             <img src="/logo.png" alt="Logo" className="h-10 w-10" loading="lazy" />
             </motion.div>
             <span className="text-xl font-bold tracking-tight text-white">Pixoranest</span>
           </Link>
@@ -137,7 +137,7 @@ const Index = () => {
                   </Button>
                 </Link>
                 <Link to="/login">
-                  <Button size="sm" className="gap-2 bg-white text-slate-950 hover:bg-slate-200 rounded-full px-6 font-semibold transition-all hover:scale-105 active:scale-95">
+                  <Button size="sm" className="gap-2 bg-white text-slate-950 hover:bg-slate-200 rounded-full px-6 font-semibold transition-opacity">
                     Get Started <ChevronRight className="h-4 w-4" />
                   </Button>
                 </Link>
@@ -150,11 +150,11 @@ const Index = () => {
       <main className="relative z-10 flex-1">
         {/* Hero Section */}
         <section className="relative px-6 py-32 lg:px-8 lg:py-40 flex flex-col items-center text-center">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary-foreground mb-8 backdrop-blur-md shadow-[0_0_20px_rgba(48,79,159,0.15)] transition-all hover:bg-primary/20 cursor-default"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.45 }}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary-foreground mb-8 shadow-sm transition-opacity cursor-default"
           >
             <Sparkles className="h-4 w-4 text-primary" />
             <span>Next-Gen AI Automation Platform</span>
@@ -188,20 +188,20 @@ const Index = () => {
             {loading ? (
               <Button size="lg" disabled className="h-14 w-48 rounded-full bg-white/10">Loading...</Button>
             ) : session ? (
-              <Link to={getRedirectPath(profile?.role || "client")}>
-                <Button size="lg" className="h-14 px-8 gap-3 text-lg rounded-full bg-primary hover:bg-primary/90 w-full sm:w-auto shadow-[0_0_40px_-10px_rgba(48,79,159,0.5)] transition-all hover:scale-105">
+                <Link to={getRedirectPath(profile?.role || "client") }>
+                <Button size="lg" className="h-14 px-8 gap-3 text-lg rounded-full bg-primary hover:bg-primary/90 w-full sm:w-auto shadow-sm transition-opacity">
                   Launch Dashboard <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
             ) : (
               <>
                 <Link to="/login" className="w-full sm:w-auto">
-                  <Button size="lg" className="h-14 px-8 gap-3 text-lg rounded-full bg-white text-slate-950 hover:bg-slate-200 w-full sm:w-auto shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105 font-semibold">
+                  <Button size="lg" className="h-14 px-8 gap-3 text-lg rounded-full bg-white text-slate-950 hover:bg-slate-200 w-full sm:w-auto shadow-sm transition-opacity font-semibold">
                     Start Growing Today <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
                 <div className="w-full sm:w-auto mt-4 sm:mt-0">
-                  <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-white/20 hover:bg-white/5 text-slate-200 hover:text-white w-full sm:w-auto backdrop-blur-sm transition-all hover:border-white/40">
+                  <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full bg-white text-slate-950 hover:bg-white/10 text-black hover:text-white w-full sm:w-auto transition-opacity hover:border-white/50 font-semibold">
                     Book a Demo
                   </Button>
                 </div>
@@ -228,7 +228,7 @@ const Index = () => {
         </section>
 
         {/* Features Section */}
-        <section className="relative px-6 py-24 lg:px-8 border-t border-white/5 bg-slate-950/20 backdrop-blur-md">
+        <section className="relative px-6 py-24 lg:px-8 border-t border-white/5 bg-slate-950/20">
           <div className="container mx-auto max-w-7xl">
             <div className="mb-20 text-center max-w-3xl mx-auto">
               <h2 className="text-3xl font-bold tracking-tight md:text-5xl bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent pb-2">Engineered for Success</h2>
@@ -243,17 +243,16 @@ const Index = () => {
               className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
             >
               {features.map((feature, index) => (
-                <motion.div 
-                  key={index} 
+                <motion.div
+                  key={index}
                   variants={itemVariants}
-                  whileHover={{ y: -5 }}
-                  className="group relative rounded-3xl border border-white/5 bg-white/[0.02] p-8 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden"
+                  className="group relative rounded-3xl border border-white/5 bg-white/[0.02] p-8 hover:bg-white/[0.04] transition-opacity duration-300 overflow-hidden"
                 >
                   {/* Subtle glowing background orb inside the card */}
                   <div className={`absolute -top-24 -right-24 h-48 w-48 rounded-full bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-100 blur-3xl transition-opacity duration-700 pointer-events-none`} />
                   
                   <div className="relative z-10">
-                    <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 border border-white/10 shadow-inner group-hover:scale-110 group-hover:bg-white/10 transition-all duration-300">
+                    <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 border border-white/10 group-hover:bg-white/10 transition-opacity duration-300">
                       {feature.icon}
                     </div>
                     <h3 className="text-xl font-semibold text-white mb-3 tracking-tight">{feature.title}</h3>
@@ -283,7 +282,7 @@ const Index = () => {
                 <h2 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl mb-8 leading-[1.1] text-white">Built for Scale & <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan-400">White-Labeling</span></h2>
                 <div className="space-y-8 mt-12">
                   <div className="group flex gap-5">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 border border-primary/20 transition-all group-hover:scale-110">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 border border-primary/20 transition-opacity">
                       <ShieldCheck className="h-7 w-7 text-primary" />
                     </div>
                     <div className="flex-1">
@@ -292,7 +291,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="group flex gap-5">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/20 transition-all group-hover:scale-110">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/20 transition-opacity">
                       <Zap className="h-7 w-7 text-blue-400" />
                     </div>
                     <div className="flex-1">
@@ -310,10 +309,10 @@ const Index = () => {
                 className="relative w-full max-w-lg lg:max-w-xl"
               >
                 {/* Floating decorative elements */}
-                <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-blue-500/20 blur-[60px]" />
-                <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-primary/20 blur-[60px]" />
-                
-                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-10 text-white shadow-2xl backdrop-blur-xl group hover:border-primary/20 transition-all duration-500">
+                <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-blue-500/18 blur-[36px]" />
+                <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-primary/18 blur-[36px]" />
+
+                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-10 text-white shadow-sm group hover:border-primary/20 transition-opacity duration-300">
                   <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity rotate-12 group-hover:rotate-0 duration-700">
                     <Bot className="w-32 h-32 text-primary" />
                   </div>
@@ -326,7 +325,7 @@ const Index = () => {
                           </svg>
                         ))}
                       </div>
-                      <h3 className="text-3xl lg:text-4xl font-semibold mb-6 leading-snug tracking-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-400 transition-all">
+                      <h3 className="text-3xl lg:text-4xl font-semibold mb-6 leading-snug tracking-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-400 transition-opacity">
                         "The most robust, intelligent communication AI platform we've ever scaled with."
                       </h3>
                     </div>

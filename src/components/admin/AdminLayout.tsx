@@ -42,11 +42,17 @@ function AdminLayoutInner() {
     if (!user) return;
     const channel = supabase
       .channel("unread-count")
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
-        fetchUnreadCount();
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => {
+          fetchUnreadCount();
+        },
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, fetchUnreadCount]);
 
   return (
@@ -58,8 +64,11 @@ function AdminLayoutInner() {
         unreadMessages={unreadMessages}
       />
 
-      <main className="md:ml-60 pt-14 md:pt-16 min-h-screen">
-        <div className="p-4 md:p-6">
+      <main
+        className="md:ml-60 pt-14 md:pt-16 flex flex-col"
+        style={{ height: "100dvh" }}
+      >
+        <div className="flex-1 min-h-0 p-4 md:p-6 overflow-y-auto">
           <Outlet />
         </div>
       </main>
@@ -72,9 +81,7 @@ function AdminLayoutInner() {
         }}
       />
 
-      <QuickActionsFAB
-        onOpenMessages={() => setMessagesOpen(true)}
-      />
+      <QuickActionsFAB onOpenMessages={() => setMessagesOpen(true)} />
     </div>
   );
 }

@@ -9,8 +9,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Eye, EyeOff, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const { session, profile, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
@@ -39,6 +41,27 @@ export default function Login() {
 
     try {
       if (isSignUp) {
+        if (password.length < 8) {
+          setError("Password must be at least 8 characters long.");
+          setLoading(false);
+          return;
+        }
+        if (!/[A-Z]/.test(password)) {
+          setError("Password must contain at least one uppercase letter.");
+          setLoading(false);
+          return;
+        }
+        if (!/[0-9]/.test(password)) {
+          setError("Password must contain at least one number.");
+          setLoading(false);
+          return;
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+          setError("Password must contain at least one special character.");
+          setLoading(false);
+          return;
+        }
+
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -57,7 +80,10 @@ export default function Login() {
 
         if (data.user) {
           setError("");
-          alert("Check your email for the confirmation link!");
+          toast({
+            title: "Check your email",
+            description: "We've sent you a confirmation link to verify your account.",
+          });
           setIsSignUp(false);
         }
       } else {
@@ -114,31 +140,19 @@ export default function Login() {
       {/* Animated Background Blobs */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <motion.div
-          animate={{
-            x: [0, 100, 0],
-            y: [0, 50, 0],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[10%] -left-[10%] h-[500px] w-[500px] rounded-full bg-primary/20 blur-[120px]"
+          animate={{ opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-[10%] -left-[10%] h-[500px] w-[500px] rounded-full bg-primary/20 blur-[120px] will-change-[opacity]"
         />
         <motion.div
-          animate={{
-            x: [0, -100, 0],
-            y: [0, -50, 0],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[10%] -right-[10%] h-[500px] w-[500px] rounded-full bg-blue-600/20 blur-[120px]"
+          animate={{ opacity: [0.2, 0.4, 0.2] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -bottom-[10%] -right-[10%] h-[500px] w-[500px] rounded-full bg-blue-600/20 blur-[120px] will-change-[opacity]"
         />
         <motion.div
-          animate={{
-            x: [0, 50, 0],
-            y: [0, -100, 0],
-            opacity: [0.1, 0.2, 0.1],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[30%] left-[20%] h-[300px] w-[300px] rounded-full bg-indigo-500/10 blur-[100px]"
+          animate={{ opacity: [0.1, 0.3, 0.1] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[30%] left-[20%] h-[300px] w-[300px] rounded-full bg-indigo-500/10 blur-[100px] will-change-[opacity]"
         />
         
         {/* Grid pattern overlay */}
@@ -282,7 +296,10 @@ export default function Login() {
                           setError(resetError.message);
                         } else {
                           setError("");
-                          alert("Password reset email sent! Check your inbox.");
+                          toast({
+                            title: "Email Sent!",
+                            description: "Password reset instructions have been sent to your inbox.",
+                          });
                         }
                       }}
                     >

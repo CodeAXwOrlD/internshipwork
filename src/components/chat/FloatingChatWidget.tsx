@@ -79,9 +79,11 @@ export default function FloatingChatWidget() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setTimeout(() => {
+        scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      }, 100);
     }
-  }, [chatMessages, isOpen]);
+  }, [chatMessages, isOpen, isLoading]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -103,6 +105,10 @@ export default function FloatingChatWidget() {
              isAI: dbMsg.role === 'assistant'
            }];
          });
+         
+         if (dbMsg.role === 'assistant' || dbMsg.role === 'agent') {
+           setIsLoading(false);
+         }
       })
       .subscribe();
       
@@ -179,14 +185,14 @@ export default function FloatingChatWidget() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 h-16 w-16 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center z-50 overflow-hidden group"
+            className="fixed bottom-16 right-4 md:bottom-6 md:right-6 h-14 w-14 md:h-16 md:w-16 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center z-50 overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-primary to-blue-600 opacity-100 group-hover:opacity-90 transition-opacity" />
-            <Sparkles className="w-8 h-8 relative z-10" />
+            <Sparkles className="w-6 h-6 md:w-8 md:h-8 relative z-10" />
             {/* Ping animation indicator */}
-            <span className="absolute top-0 right-0 h-4 w-4">
+            <span className="absolute top-0 right-0 h-3 w-3 md:h-4 md:w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-40"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-primary"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 md:h-4 md:w-4 bg-red-500 border-2 border-primary"></span>
             </span>
           </motion.button>
         )}
@@ -200,7 +206,7 @@ export default function FloatingChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-6 right-6 w-[380px] h-[600px] max-h-[85vh] bg-white rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden border border-primary/20"
+            className="fixed bottom-20 right-4 left-4 md:left-auto md:bottom-6 md:right-6 md:w-[380px] h-[600px] max-h-[70vh] md:max-h-[85vh] bg-white rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden border border-primary/20"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-blue-600 p-4 text-white flex items-center justify-between shadow-md relative z-10">
@@ -239,7 +245,7 @@ export default function FloatingChatWidget() {
             </div>
 
             {/* Messages Area */}
-            <ScrollArea className="flex-1 p-4 bg-slate-50/50" ref={scrollRef}>
+            <ScrollArea className="flex-1 p-4 bg-slate-50/50">
               <div className="space-y-4">
                 <div className="flex justify-center my-2">
                    <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-100 px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
@@ -272,8 +278,10 @@ export default function FloatingChatWidget() {
 
                   {isLoading && (
                     <motion.div
+                      key="loading-bubble"
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       className="flex flex-col max-w-[80%] mr-auto items-start"
                     >
                       <div className="relative p-4 rounded-2xl bg-white border border-slate-100 rounded-bl-sm shadow-sm">
@@ -285,6 +293,7 @@ export default function FloatingChatWidget() {
                       </div>
                     </motion.div>
                   )}
+                  <div ref={scrollRef} />
                 </AnimatePresence>
               </div>
             </ScrollArea>

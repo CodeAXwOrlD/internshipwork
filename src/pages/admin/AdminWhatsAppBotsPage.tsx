@@ -365,7 +365,7 @@ export default function AdminWhatsAppBotsPage() {
 
             <div className="space-y-3 pt-2 border-t border-white/5">
               <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">API Configuration</Label>
-              <Input placeholder="Panel URL (e.g. https://gate.whapi.cloud/v2)" value={newBot.panel_url} onChange={e => setNewBot({...newBot, panel_url: e.target.value})} />
+              <Input placeholder="Panel URL (e.g. https://app.whapihub.com/api)" value={newBot.panel_url} onChange={e => setNewBot({...newBot, panel_url: e.target.value})} />
               <Input placeholder="API Key" type="password" value={newBot.api_key} onChange={e => setNewBot({...newBot, api_key: e.target.value})} />
               <Input placeholder="Phone ID" value={newBot.phone_id} onChange={e => setNewBot({...newBot, phone_id: e.target.value})} />
             </div>

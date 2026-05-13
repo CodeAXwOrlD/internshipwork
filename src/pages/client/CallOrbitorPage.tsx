@@ -24,7 +24,7 @@ import {
   ArrowUpRight, Clock, Shield, Brain, Calendar,
   Mic, Search, Filter, RefreshCw, Trash2, Save
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { formatDistanceToNow, format, subDays } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import CreateCampaignWizard from "@/components/client/telecaller/CreateCampaignWizard";
@@ -85,7 +85,7 @@ export default function CallOrbitorPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <div className="p-6 rounded-[32px] bg-white/5 backdrop-blur-xl border border-white/10 shadow-inner">
+             <div className="p-6 rounded-[32px] bg-white/5 bg-opacity-95 border border-white/10 shadow-inner">
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Engaged Time</p>
                <div className="flex items-baseline gap-2">
                  <span className="text-3xl font-black">12.5k</span>
@@ -109,21 +109,21 @@ export default function CallOrbitorPage() {
           <TabsList className="bg-slate-100/50 p-1.5 rounded-[32px] h-20 border border-slate-200">
             <TabsTrigger 
               value="outbound" 
-              className="px-10 rounded-[28px] h-full font-black text-sm data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all gap-3"
+              className="px-10 rounded-[28px] h-full font-black text-sm data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-colors gap-3"
             >
               <ArrowUpRight className="w-5 h-5" />
               OUTBOUND
             </TabsTrigger>
             <TabsTrigger 
               value="inbound" 
-              className="px-10 rounded-[28px] h-full font-black text-sm data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all gap-3"
+              className="px-10 rounded-[28px] h-full font-black text-sm data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-colors gap-3"
             >
               <PhoneIncoming className="w-5 h-5" />
               INBOUND
             </TabsTrigger>
             <TabsTrigger 
               value="receptionist" 
-              className="px-10 rounded-[28px] h-full font-black text-sm data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all gap-3"
+              className="px-10 rounded-[28px] h-full font-black text-sm data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-colors gap-3"
             >
               <Brain className="w-5 h-5" />
               RECEPTIONIST
@@ -132,12 +132,12 @@ export default function CallOrbitorPage() {
         </div>
 
         {/* 3. Tab Contents */}
-        <AnimatePresence mode="wait">
+        
           <TabsContent value="outbound">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+            <div
+              
+              
+              
               className="space-y-8"
             >
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -195,7 +195,7 @@ export default function CallOrbitorPage() {
                      
                      <div className="space-y-4">
                        {[1, 2, 3].map(i => (
-                         <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 group hover:border-primary/50 transition-all cursor-pointer">
+                         <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 group hover:border-primary/50 transition-colors cursor-pointer">
                            <div className="flex items-center gap-3">
                              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center animate-pulse"><Phone className="w-4 h-4 text-primary" /></div>
                              <span className="text-xs font-bold font-mono">+91 98*** 450</span>
@@ -217,13 +217,13 @@ export default function CallOrbitorPage() {
                    </Card>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </TabsContent>
 
           <TabsContent value="inbound">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div
+              
+              
               className="space-y-8"
             >
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -265,7 +265,7 @@ export default function CallOrbitorPage() {
                       <Button className="flex-1 rounded-2xl bg-white text-indigo-900 font-black h-12 shadow-lg hover:bg-slate-50 transition-colors">
                         Copy Number
                       </Button>
-                      <Button className="h-12 w-12 rounded-2xl bg-white/10 text-white backdrop-blur-md hover:bg-white/20 transition-colors">
+                      <Button className="h-12 w-12 rounded-2xl bg-white/10 text-white bg-opacity-90 hover:bg-white/20 transition-colors">
                         <Settings className="w-5 h-5" />
                       </Button>
                     </div>
@@ -281,13 +281,13 @@ export default function CallOrbitorPage() {
                   </Card>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </TabsContent>
 
           <TabsContent value="receptionist">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div
+              
+              
               className="space-y-8"
             >
               <div className="grid gap-8 lg:grid-cols-2">
@@ -340,7 +340,7 @@ export default function CallOrbitorPage() {
                       <div className="absolute -bottom-10 -right-10 opacity-5 group-hover:scale-110 transition-transform duration-700"><Search className="w-48 h-48" /></div>
                       <h4 className="text-xl font-black mb-4">Deep Learning <span className="text-primary">Logs</span></h4>
                       <p className="text-sm text-slate-500 mb-8 leading-relaxed">Analyze the transcripts of the last 50 calls to improve AI response quality and sentiment score.</p>
-                      <Button variant="outline" className="w-full h-12 rounded-2xl border-white/10 text-white font-bold hover:bg-white/10 hover:text-white transition-all">
+                      <Button variant="outline" className="w-full h-12 rounded-2xl border-white/10 text-white font-bold hover:bg-white/10 hover:text-white transition-colors">
                         <Sparkles className="w-4 h-4 mr-2" /> Open AI Lab
                       </Button>
                    </Card>
@@ -357,9 +357,9 @@ export default function CallOrbitorPage() {
                    </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </TabsContent>
-        </AnimatePresence>
+        
       </Tabs>
 
       {/* 4. Wizard */}
@@ -392,7 +392,7 @@ function ModuleStatCard({ label, value, icon, color }: { label: string; value: s
   };
 
   return (
-    <Card className="rounded-[32px] border-slate-50 bg-white/50 backdrop-blur-sm shadow-xl shadow-slate-200/20 hover:shadow-2xl hover:shadow-primary/5 transition-all group overflow-hidden">
+    <Card className="rounded-[32px] border-slate-50 bg-white/50 bg-opacity-85 shadow-xl shadow-slate-200/20 hover:shadow-2xl hover:shadow-primary/5 transition-colors group overflow-hidden">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500", colorMap[color])}>
@@ -453,7 +453,7 @@ function CampaignRow({ name, status, progress }: { name: string; status: string;
 
 function InboundCallItem({ name, phone, status, time, summary }: { name: string; phone: string; status: string; time: string; summary: string }) {
   return (
-    <div className="group p-5 rounded-3xl border border-slate-50 bg-white hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col md:flex-row gap-4 items-start md:items-center">
+    <div className="group p-5 rounded-3xl border border-slate-50 bg-white hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-colors flex flex-col md:flex-row gap-4 items-start md:items-center">
        <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
           <PhoneIncoming className="w-5 h-5" />
        </div>
@@ -497,7 +497,7 @@ function RoutingRule({ label, action, active }: { label: string; action: string;
 
 function ControlItem({ icon, label, description, enabled }: { icon: React.ReactNode; label: string; description: string; enabled: boolean }) {
   return (
-    <div className="flex items-center justify-between p-5 rounded-3xl border border-slate-50 hover:border-primary/10 hover:shadow-lg hover:shadow-primary/5 transition-all">
+    <div className="flex items-center justify-between p-5 rounded-3xl border border-slate-50 hover:border-primary/10 hover:shadow-lg hover:shadow-primary/5 transition-colors">
        <div className="flex items-center gap-4">
           <div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 font-bold group-hover:text-primary transition-colors">
             {icon}
@@ -507,7 +507,7 @@ function ControlItem({ icon, label, description, enabled }: { icon: React.ReactN
             <p className="text-[10px] text-slate-400 font-medium">{description}</p>
           </div>
        </div>
-       <div className={cn("px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border", enabled ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" : "bg-white text-slate-300 border-slate-100")}>
+       <div className={cn("px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest cursor-pointer transition-colors border", enabled ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" : "bg-white text-slate-300 border-slate-100")}>
          {enabled ? "ENABLED" : "DISABLED"}
        </div>
     </div>

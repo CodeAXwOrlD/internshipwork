@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { 
   Sparkles, 
   BookOpen, 
@@ -227,9 +227,9 @@ export default function AIConfigurationPage() {
   return (
     <div className="space-y-8 pb-20">
       {/* Header Banner */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div 
+        
+        
         className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-white to-accent/10 border border-primary/20 p-8 md:p-12 shadow-sm group"
       >
         <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity pointer-events-none">
@@ -258,11 +258,11 @@ export default function AIConfigurationPage() {
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Main Configuration Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-        <TabsList className="bg-white/50 backdrop-blur-sm p-1 rounded-2xl border border-primary/10 w-full md:w-auto h-auto grid grid-cols-2 gap-1 shadow-sm">
+        <TabsList className="bg-white/50 bg-opacity-85 p-1 rounded-2xl border border-primary/10 w-full md:w-auto h-auto grid grid-cols-2 gap-1 shadow-sm">
           <TabsTrigger value="brain" className="rounded-xl px-4 py-3 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary font-bold">
             <Sparkles className="w-4 h-4 mr-2" />
             AI Brain
@@ -273,11 +273,11 @@ export default function AIConfigurationPage() {
           </TabsTrigger>
         </TabsList>
 
-        <AnimatePresence mode="wait">
+        
           {/* AI Brain Tab */}
           {activeTab === "brain" && (
             <TabsContent value="brain" key="brain" forceMount>
-            <motion.div
+            <div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -298,13 +298,13 @@ export default function AIConfigurationPage() {
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
                       placeholder="e.g., You are a helpful and professional real estate assistant for Pixoranest..."
-                      className="min-h-[200px] bg-slate-100/50 border-black focus-visible:ring-2 focus-visible:ring-primary/20 rounded-2xl p-4 transition-all text-slate-700 font-medium"
+                      className="min-h-[200px] bg-slate-100/50 border-black focus-visible:ring-2 focus-visible:ring-primary/20 rounded-2xl p-4 transition-colors text-slate-700 font-medium"
                     />
                   </div>
                   <div className="grid gap-4 md:grid-cols-3">
                     {/* Strict & Precise */}
                     <div 
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${
                         temperature === 0.2 
                           ? "bg-primary border-primary shadow-lg shadow-primary/20" 
                           : "bg-slate-50 border-slate-100 hover:border-primary/20 hover:bg-slate-50/80"
@@ -326,7 +326,7 @@ export default function AIConfigurationPage() {
 
                     {/* Balanced & Professional */}
                     <div 
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${
                         temperature === 0.6 
                           ? "bg-slate-800 border-slate-800 shadow-lg shadow-slate-800/20" 
                           : "bg-slate-50 border-slate-100 hover:border-slate-300 hover:bg-slate-50/80"
@@ -348,7 +348,7 @@ export default function AIConfigurationPage() {
 
                     {/* Creative & Warm */}
                     <div 
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${
                         temperature === 0.95 
                           ? "bg-orange-500 border-orange-500 shadow-lg shadow-orange-500/20" 
                           : "bg-slate-50 border-slate-100 hover:border-orange-200 hover:bg-slate-50/80"
@@ -380,14 +380,14 @@ export default function AIConfigurationPage() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           </TabsContent>
           )}
 
           {/* Knowledge Base Tab */}
           {activeTab === "knowledge" && (
             <TabsContent value="knowledge" key="knowledge" forceMount>
-            <motion.div
+            <div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -408,7 +408,7 @@ export default function AIConfigurationPage() {
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
                   {isAddingFaq && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3 mb-4">
+                    <div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3 mb-4">
                          <Label className="text-[10px] font-bold text-slate-500 uppercase">Question</Label>
                          <Input value={newQuestion} onChange={e => setNewQuestion(e.target.value)} placeholder="e.g., Do you offer trial?" className="bg-white rounded-xl" />
                          <Label className="text-[10px] font-bold text-slate-500 uppercase block mt-2">Answer</Label>
@@ -416,7 +416,7 @@ export default function AIConfigurationPage() {
                          <Button className="w-full mt-2 rounded-xl" size="sm" onClick={handleAddFaq} style={{ backgroundColor: primaryColor }}>
                              Save FAQ Knowledge
                          </Button>
-                    </motion.div>
+                    </div>
                   )}
 
                   {faqs.length === 0 ? (
@@ -428,7 +428,7 @@ export default function AIConfigurationPage() {
                       const answer = lines[1] || "";
 
                       return (
-                        <div key={q.id} className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 space-y-2 group transition-all hover:border-primary/20">
+                        <div key={q.id} className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 space-y-2 group transition-colors hover:border-primary/20">
                           <div className="flex justify-between items-start">
                             <p className="text-sm font-bold text-slate-700">Q: {question}</p>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={() => handleDeleteKnowledge(q.id)}>
@@ -442,15 +442,15 @@ export default function AIConfigurationPage() {
                   )}
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           </TabsContent>
           )}
 
-        </AnimatePresence>
+        
       </Tabs>
       
       {/* Footer Save Bar (Mobile) */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 md:hidden z-50">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 bg-opacity-90 border-t border-slate-100 md:hidden z-50">
         <Button className="w-full rounded-2xl h-12 font-bold text-lg" style={{ backgroundColor: primaryColor }} onClick={handleSave}>
           <Save className="w-5 h-5 mr-2" />
           {isSaving ? "Saving..." : "Save AI Brain"}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigate } from "react-router-dom";
@@ -539,6 +539,21 @@ export default function WhatsAppPage() {
     { id: "ai-settings", label: "AI Settings", icon: BotIcon },
   ] as const;
 
+  // Lock page-level scroll when inbox is active so panels get bounded heights
+  const inboxContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (mainTab !== "inbox") return;
+    const main = inboxContainerRef.current?.closest("main");
+    if (!main) return;
+    const innerDiv = main.querySelector(":scope > div") as HTMLElement | null;
+    main.style.overflow = "hidden";
+    if (innerDiv) innerDiv.style.minHeight = "0";
+    return () => {
+      main.style.overflow = "";
+      if (innerDiv) innerDiv.style.minHeight = "";
+    };
+  }, [mainTab]);
+
   if (contextLoading || isLoading) return <LoadingSkeleton />;
   if (!waService) return <Navigate to="/client" replace />;
 
@@ -548,7 +563,7 @@ export default function WhatsAppPage() {
       : campaigns.filter((c) => c.status === campaignTab);
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden flex-1 min-h-0">
+    <div ref={inboxContainerRef} className="flex flex-col md:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden flex-1 min-h-0">
       <div className="w-full md:w-44 md:shrink-0">
         <div className="flex flex-row md:flex-col gap-1 sticky top-0 md:top-6 overflow-x-auto md:overflow-x-visible no-scrollbar pb-2 md:pb-0 scrollbar-hide">
           {tabs.map((tab) => {
@@ -577,13 +592,14 @@ export default function WhatsAppPage() {
         className={cn(
           "flex-1 min-w-0 flex flex-col transition-all min-h-0",
           mainTab === "inbox"
-            ? "flex-1 min-h-0 -mx-4 md:mx-0 -mb-4 md:mb-0"
+            ? "flex-1 min-h-0 -mx-4 md:mx-0 -mb-4 md:mb-0 overflow-hidden"
             : "h-auto space-y-4 md:space-y-6",
         )}
       >
         <div
           className={cn(
-            "bg-white/50 backdrop-blur-sm border border-slate-200/60 rounded-3xl px-4 py-3 md:p-6 shadow-sm mb-4 md:mb-6 transition-all"
+            "bg-white/50 backdrop-blur-sm border border-slate-200/60 rounded-3xl px-4 py-3 md:p-6 shadow-sm mb-4 md:mb-6 transition-all",
+            mainTab === "inbox" && "flex-shrink-0",
           )}
         >
           <div className="flex flex-col gap-3">

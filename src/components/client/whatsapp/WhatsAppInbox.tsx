@@ -1,364 +1,353 @@
-  import {
-    useState,
-    useMemo,
-    useEffect,
-    useCallback,
-    useRef,
-    useLayoutEffect,
-  } from "react";
-  import {
-    Search,
-    Paperclip,
-    Smile,
-    Send,
-    MessageSquare,
-    Phone,
-    MoreHorizontal,
-    Bot,
-    Loader2,
-    FileText,
-    Image,
-    Camera,
-    User,
-    ArrowLeft,
-    Archive,
-    Trash2,
-    Filter,
-    CheckSquare,
-    Settings,
-    Download,
-    Ban,
-  } from "lucide-react";
-  import { Input } from "@/components/ui/input";
-  import { Button } from "@/components/ui/button";
-  import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu";
-  import { ScrollArea } from "@/components/ui/scroll-area";
-  import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-  import { cn } from "@/lib/utils";
-  import { supabase } from "@/integrations/supabase/client";
-  import { useClient } from "@/contexts/ClientContext";
-  import { format, formatDistanceToNow } from "date-fns";
-  import { sendWhatsAppMessage } from "@/utils/whatsapp";
-  import {
-    detectWhatsAppMediaType,
-    uploadWhatsAppAttachment,
-    WHATSAPP_ATTACHMENTS_BUCKET,
-  } from "@/utils/whatsapp";
-  import { useToast } from "@/hooks/use-toast";
-  import { motion, AnimatePresence } from "framer-motion";
-  import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-  } from "@/components/ui/popover";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+} from "react";
+import {
+  Search,
+  Paperclip,
+  Smile,
+  Send,
+  MessageSquare,
+  Phone,
+  MoreHorizontal,
+  Bot,
+  Loader2,
+  FileText,
+  Image,
+  Camera,
+  User,
+  ArrowLeft,
+  Archive,
+  Trash2,
+  Filter,
+  CheckSquare,
+  Settings,
+  Download,
+  Ban,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useClient } from "@/contexts/ClientContext";
+import { format, formatDistanceToNow } from "date-fns";
+import { sendWhatsAppMessage } from "@/utils/whatsapp";
+import {
+  detectWhatsAppMediaType,
+  uploadWhatsAppAttachment,
+  WHATSAPP_ATTACHMENTS_BUCKET,
+} from "@/utils/whatsapp";
+import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-  const EMOJI_CATEGORIES = [
-    {
-      label: "Smileys",
-      emojis: [
-        "😊",
-        "😂",
-        "🤣",
-        "❤️",
-        "😍",
-        "🥰",
-        "😎",
-        "🤔",
-        "🙄",
-        "😅",
-        "😭",
-        "😤",
-        "🤯",
-        "😴",
-        "😇",
-        "🥳",
-        "😱",
-        "🤫",
-        "🤥",
-        "🤡",
-      ],
-    },
-    {
-      label: "Gestures",
-      emojis: [
-        "👍",
-        "🙏",
-        "🙌",
-        "👏",
-        "👋",
-        "🤝",
-        "✌️",
-        "🤞",
-        "🤟",
-        "🤘",
-        "👌",
-        "🤌",
-        "🤏",
-        "👈",
-        "👉",
-        "👆",
-        "👇",
-        "💪",
-        "🖕",
-        "✍️",
-      ],
-    },
-    {
-      label: "Symbols",
-      emojis: [
-        "✅",
-        "❌",
-        "⚠️",
-        "💯",
-        "🔥",
-        "✨",
-        "🚀",
-        "💡",
-        "📍",
-        "📞",
-        "💬",
-        "🔔",
-        "⭐",
-        "🌈",
-        "⚡",
-        "❄️",
-        "☀️",
-        "🌙",
-        "🌍",
-        "🕒",
-      ],
-    },
-    {
-      label: "Objects",
-      emojis: [
-        "💻",
-        "📱",
-        "📷",
-        "🎥",
-        "🎨",
-        "🎭",
-        "🎮",
-        "📚",
-        "🖊️",
-        "📅",
-        "🎁",
-        "🏆",
-        "💼",
-        "🛒",
-        "💰",
-        "🔑",
-        "📦",
-        "📧",
-        "🖇️",
-        "🔒",
-      ],
-    },
-  ];
+const EMOJI_CATEGORIES = [
+  {
+    label: "Smileys",
+    emojis: [
+      "😊",
+      "😂",
+      "🤣",
+      "❤️",
+      "😍",
+      "🥰",
+      "😎",
+      "🤔",
+      "🙄",
+      "😅",
+      "😭",
+      "😤",
+      "🤯",
+      "😴",
+      "😇",
+      "🥳",
+      "😱",
+      "🤫",
+      "🤥",
+      "🤡",
+    ],
+  },
+  {
+    label: "Gestures",
+    emojis: [
+      "👍",
+      "🙏",
+      "🙌",
+      "👏",
+      "👋",
+      "🤝",
+      "✌️",
+      "🤞",
+      "🤟",
+      "🤘",
+      "👌",
+      "🤌",
+      "🤏",
+      "👈",
+      "👉",
+      "👆",
+      "👇",
+      "💪",
+      "🖕",
+      "✍️",
+    ],
+  },
+  {
+    label: "Symbols",
+    emojis: [
+      "✅",
+      "❌",
+      "⚠️",
+      "💯",
+      "🔥",
+      "✨",
+      "🚀",
+      "💡",
+      "📍",
+      "📞",
+      "💬",
+      "🔔",
+      "⭐",
+      "🌈",
+      "⚡",
+      "❄️",
+      "☀️",
+      "🌙",
+      "🌍",
+      "🕒",
+    ],
+  },
+  {
+    label: "Objects",
+    emojis: [
+      "💻",
+      "📱",
+      "📷",
+      "🎥",
+      "🎨",
+      "🎭",
+      "🎮",
+      "📚",
+      "🖊️",
+      "📅",
+      "🎁",
+      "🏆",
+      "💼",
+      "🛒",
+      "💰",
+      "🔑",
+      "📦",
+      "📧",
+      "🖇️",
+      "🔒",
+    ],
+  },
+];
 
-  const ATTACHMENT_OPTIONS = [
-    { label: "Document", icon: FileText, color: "#7f66ff" },
-    { label: "Photos & Videos", icon: Image, color: "#007bfc" },
-    { label: "Camera", icon: Camera, color: "#ff2e74" },
-    { label: "Contact", icon: User, color: "#00a5f4" },
-  ];
+const ATTACHMENT_OPTIONS = [
+  { label: "Document", icon: FileText, color: "#7f66ff" },
+  { label: "Photos & Videos", icon: Image, color: "#007bfc" },
+  { label: "Camera", icon: Camera, color: "#ff2e74" },
+  { label: "Contact", icon: User, color: "#00a5f4" },
+];
 
-  // Below this px = mobile/tablet (single-panel navigation)
-  const DESKTOP_BREAKPOINT = 1280;
+// Below this px = mobile/tablet (single-panel navigation)
+const DESKTOP_BREAKPOINT = 1280;
 
-  export default function WhatsAppInbox({
-    selectedAppId,
-    assignedBots,
-  }: {
-    selectedAppId?: string | null;
-    assignedBots?: any[];
-  }) {
-    const { client } = useClient();
-    const { toast } = useToast();
-    const [chats, setChats] = useState<any[]>([]);
-    const [activeChatId, setActiveChatId] = useState<string | null>(null);
-    const [messages, setMessages] = useState<any[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [messageInput, setMessageInput] = useState("");
-    const [isLoadingChats, setIsLoadingChats] = useState(true);
-    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-    const [isSending, setIsSending] = useState(false);
-    
-    // Bulk selection state
-    const [isSelectionMode, setIsSelectionMode] = useState(false);
-    const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
+export default function WhatsAppInbox({
+  selectedAppId,
+  assignedBots,
+}: {
+  selectedAppId?: string | null;
+  assignedBots?: any[];
+}) {
+  const { client } = useClient();
+  const { toast } = useToast();
+  const [chats, setChats] = useState<any[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [messageInput, setMessageInput] = useState("");
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
-    // true = narrow screen (mobile/tablet): navigate list -> chat
-    // false = wide screen (desktop): show both panels side by side
-    const [isMobileMode, setIsMobileMode] = useState(() =>
-      typeof window !== "undefined"
-        ? window.innerWidth < DESKTOP_BREAKPOINT
-        : false,
+  // Bulk selection state
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // true = narrow screen (mobile/tablet): navigate list -> chat
+  // false = wide screen (desktop): show both panels side by side
+  const [isMobileMode, setIsMobileMode] = useState(() =>
+    typeof window !== "undefined"
+      ? window.innerWidth < DESKTOP_BREAKPOINT
+      : false,
+  );
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const scrollToLatestMessage = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    const update = () =>
+      setIsMobileMode(window.innerWidth < DESKTOP_BREAKPOINT);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  const handleBackToList = useCallback(() => setActiveChatId(null), []);
+  const handleSelectChat = useCallback((id: string) => setActiveChatId(id), []);
+
+  // Derive which panels to show
+  const showListPanel = !isMobileMode || activeChatId === null;
+  const showChatPanel = !isMobileMode || activeChatId !== null;
+
+  // Auto-scroll messages to bottom when a chat opens or new messages land.
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    const timers = [50, 200, 500].map((ms) =>
+      window.setTimeout(() => scrollToLatestMessage(), ms),
     );
 
-    const photoInputRef = useRef<HTMLInputElement>(null);
-    const docInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [activeChatId, messages.length, isLoadingMessages, scrollToLatestMessage]);
 
-    useLayoutEffect(() => {
-      const update = () =>
-        setIsMobileMode(window.innerWidth < DESKTOP_BREAKPOINT);
-      update();
-      window.addEventListener("resize", update);
-      return () => window.removeEventListener("resize", update);
-    }, []);
+  const onEmojiSelect = (emoji: string) =>
+    setMessageInput((prev) => prev + emoji);
 
-    const handleBackToList = useCallback(() => setActiveChatId(null), []);
-    const handleSelectChat = useCallback((id: string) => setActiveChatId(id), []);
+  const handleAttachmentClick = (label: string) => {
+    if (label === "Document") docInputRef.current?.click();
+    else if (label === "Photos & Videos") photoInputRef.current?.click();
+    else if (label === "Camera") cameraInputRef.current?.click();
+    else
+      toast({
+        title: "Feature coming soon",
+        description: "Contact sharing is being prepared for the next update!",
+      });
+  };
 
-    // Derive which panels to show
-    const showListPanel = !isMobileMode || activeChatId === null;
-    const showChatPanel = !isMobileMode || activeChatId !== null;
-
-    // Auto-scroll messages to bottom when messages or active chat changes
-    useEffect(() => {
-      const scrollToBottom = () => {
-        if (!scrollRef.current) return;
-
-        const tryFindViewport = (): HTMLElement | null => {
-          const selectors = [
-            '[data-radix-scroll-area-viewport]',
-            '.radix-scroll-area-viewport',
-            '.scroll-area-viewport',
-            'div[style*="overflow"]',
-          ];
-          for (const sel of selectors) {
-            const el = scrollRef.current!.querySelector(sel) as HTMLElement | null;
-            if (el) return el;
-          }
-          // Fallback: pick first div that can scroll
-          const divs = scrollRef.current.querySelectorAll<HTMLElement>('div');
-          for (const d of divs) {
-            if (d.scrollHeight > d.clientHeight) return d;
-          }
-          return null;
-        };
-
-        const viewport = tryFindViewport();
-        if (viewport) viewport.scrollTop = viewport.scrollHeight;
-      };
-
-      // Try multiple timings to ensure after render and any async content we scroll
-      scrollToBottom();
-      const raf = requestAnimationFrame(scrollToBottom);
-      const t1 = setTimeout(scrollToBottom, 50);
-      const t2 = setTimeout(scrollToBottom, 200);
-      return () => {
-        cancelAnimationFrame(raf);
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
-    }, [messages, activeChatId]);
-
-    const onEmojiSelect = (emoji: string) =>
-      setMessageInput((prev) => prev + emoji);
-
-    const handleAttachmentClick = (label: string) => {
-      if (label === "Document") docInputRef.current?.click();
-      else if (label === "Photos & Videos") photoInputRef.current?.click();
-      else if (label === "Camera") cameraInputRef.current?.click();
-      else
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      e.target.value = "";
+      if (!activeChatId || !selectedAppId || !client) {
         toast({
-          title: "Feature coming soon",
-          description: "Contact sharing is being prepared for the next update!",
+          title: "Select a chat first",
+          description: "Open a conversation before sending an attachment.",
+          variant: "destructive",
         });
-    };
+        return;
+      }
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        e.target.value = "";
-        if (!activeChatId || !selectedAppId || !client) {
-          toast({
-            title: "Select a chat first",
-            description: "Open a conversation before sending an attachment.",
-            variant: "destructive",
-          });
-          return;
-        }
+      const bot = assignedBots?.find((b) => b.id === selectedAppId);
+      if (!bot) {
+        toast({
+          title: "No bot selected",
+          description: "Please choose a WhatsApp bot before sending files.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-        const bot = assignedBots?.find((b) => b.id === selectedAppId);
-        if (!bot) {
-          toast({
-            title: "No bot selected",
-            description: "Please choose a WhatsApp bot before sending files.",
-            variant: "destructive",
-          });
-          return;
-        }
+      const sendAttachment = async () => {
+        setIsSending(true);
+        try {
+          const folder = `${client.id}/${selectedAppId}/${activeChatId}`;
+          const uploaded = await uploadWhatsAppAttachment(file, folder);
+          const mediaType = detectWhatsAppMediaType(file);
+          const caption = messageInput.trim();
 
-        const sendAttachment = async () => {
-          setIsSending(true);
-          try {
-            const folder = `${client.id}/${selectedAppId}/${activeChatId}`;
-            const uploaded = await uploadWhatsAppAttachment(file, folder);
-            const mediaType = detectWhatsAppMediaType(file);
-            const caption = messageInput.trim();
-
-            if (bot.provider_type === "api") {
-              const result = await sendWhatsAppMessage(
-                {
-                  to: activeChatId,
-                  body: caption || file.name,
-                  type: mediaType,
-                  mediaUrl: uploaded.signedUrl,
-                  application_id: selectedAppId,
-                  client_id: client.id,
-                  phoneNoId: bot.api_config?.phone_id,
-                  attachment: {
-                    storagePath: uploaded.path,
-                    fileName: uploaded.fileName,
-                    mimeType: uploaded.mimeType,
-                    fileSize: uploaded.fileSize,
-                    bucket: WHATSAPP_ATTACHMENTS_BUCKET,
-                    caption: caption || file.name,
-                  },
-                },
-                bot.api_config?.api_key,
-              );
-
-              if (!result.success) throw new Error(result.message);
-            } else {
-              const { data: messageRow, error } = await (supabase.from("whatsapp_messages") as any).insert({
-                client_id: client.id,
+          if (bot.provider_type === "api") {
+            const result = await sendWhatsAppMessage(
+              {
+                to: activeChatId,
+                body: caption || file.name,
+                type: mediaType,
+                mediaUrl: uploaded.signedUrl,
                 application_id: selectedAppId,
-                phone_number: activeChatId,
-                message_type: mediaType,
-                message_content: caption || file.name,
-                direction: "outbound",
-                status: "queued",
-                metadata: {
-                  attachment: {
-                    bucket: WHATSAPP_ATTACHMENTS_BUCKET,
-                    storagePath: uploaded.path,
-                    fileName: uploaded.fileName,
-                    mimeType: uploaded.mimeType,
-                    fileSize: uploaded.fileSize,
-                    mediaUrl: uploaded.signedUrl,
-                    caption: caption || file.name,
-                  },
+                client_id: client.id,
+                phoneNoId: bot.api_config?.phone_id,
+                attachment: {
+                  storagePath: uploaded.path,
+                  fileName: uploaded.fileName,
+                  mimeType: uploaded.mimeType,
+                  fileSize: uploaded.fileSize,
+                  bucket: WHATSAPP_ATTACHMENTS_BUCKET,
+                  caption: caption || file.name,
                 },
-                sent_at: new Date().toISOString(),
-              }).select("id").single();
+              },
+              bot.api_config?.api_key,
+            );
 
-              if (error) throw error;
+            if (!result.success) throw new Error(result.message);
+          } else {
+            const { data: messageRow, error } = await (supabase.from("whatsapp_messages") as any).insert({
+              client_id: client.id,
+              application_id: selectedAppId,
+              phone_number: activeChatId,
+              message_type: mediaType,
+              message_content: caption || file.name,
+              direction: "outbound",
+              status: "queued",
+              metadata: {
+                attachment: {
+                  bucket: WHATSAPP_ATTACHMENTS_BUCKET,
+                  storagePath: uploaded.path,
+                  fileName: uploaded.fileName,
+                  mimeType: uploaded.mimeType,
+                  fileSize: uploaded.fileSize,
+                  mediaUrl: uploaded.signedUrl,
+                  caption: caption || file.name,
+                },
+              },
+              sent_at: new Date().toISOString(),
+            }).select("id").single();
 
-              if (messageRow?.id) {
-                const { error: attachmentError } = await (supabase as any)
-                  .from("whatsapp_message_attachments")
-                  .insert({
+            if (error) throw error;
+
+            if (messageRow?.id) {
+              const { error: attachmentError } = await (supabase as any)
+                .from("whatsapp_message_attachments")
+                .insert({
                   client_id: client.id,
                   message_id: messageRow.id,
                   storage_bucket: WHATSAPP_ATTACHMENTS_BUCKET,
@@ -369,263 +358,284 @@
                   caption: caption || file.name,
                 });
 
-                if (attachmentError) {
-                  console.warn("Attachment record failed:", attachmentError);
-                }
+              if (attachmentError) {
+                console.warn("Attachment record failed:", attachmentError);
               }
             }
-
-            setMessageInput("");
-            toast({
-              title: "File sent",
-              description: `${file.name} was sent successfully.`,
-            });
-          } catch (error: any) {
-            toast({
-              title: "Error sending file",
-              description: error.message,
-              variant: "destructive",
-            });
-          } finally {
-            setIsSending(false);
           }
-        };
 
-        void sendAttachment();
-      }
-    };
+          setMessageInput("");
+          toast({
+            title: "File sent",
+            description: `${file.name} was sent successfully.`,
+          });
+        } catch (error: any) {
+          toast({
+            title: "Error sending file",
+            description: error.message,
+            variant: "destructive",
+          });
+        } finally {
+          setIsSending(false);
+        }
+      };
 
-    const fetchChats = useCallback(async () => {
+      void sendAttachment();
+    }
+  };
+
+  const fetchChats = useCallback(async () => {
+    if (!client) return;
+    setIsLoadingChats(true);
+    try {
+      const { data, error } = await supabase
+        .from("whatsapp_messages")
+        .select("*")
+        .eq("client_id", client.id)
+        .order("sent_at", { ascending: false });
+      if (error) throw error;
+      const chatMap = new Map();
+      data?.forEach((msg) => {
+        if (msg.phone_number && !chatMap.has(msg.phone_number)) {
+          chatMap.set(msg.phone_number, {
+            id: msg.phone_number,
+            name: msg.phone_number,
+            lastMessage: msg.message_content || "",
+            time: msg.sent_at
+              ? formatDistanceToNow(new Date(msg.sent_at), { addSuffix: true })
+              : "just now",
+            unread: 0,
+            status: "online",
+            phone: msg.phone_number,
+          });
+        }
+      });
+      setChats(Array.from(chatMap.values()));
+    } catch (error: any) {
+      toast({
+        title: "Error fetching chats",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingChats(false);
+    }
+  }, [client, selectedAppId]);
+
+  const fetchMessages = useCallback(
+    async (phone: string) => {
       if (!client) return;
-      setIsLoadingChats(true);
+      setIsLoadingMessages(true);
       try {
         const { data, error } = await supabase
           .from("whatsapp_messages")
           .select("*")
           .eq("client_id", client.id)
-          .order("sent_at", { ascending: false });
+          .eq("phone_number", phone)
+          .order("sent_at", { ascending: true });
         if (error) throw error;
-        const chatMap = new Map();
-        data?.forEach((msg) => {
-          if (msg.phone_number && !chatMap.has(msg.phone_number)) {
-            chatMap.set(msg.phone_number, {
-              id: msg.phone_number,
-              name: msg.phone_number,
-              lastMessage: msg.message_content || "",
-              time: msg.sent_at
-                ? formatDistanceToNow(new Date(msg.sent_at), { addSuffix: true })
-                : "just now",
-              unread: 0,
-              status: "online",
-              phone: msg.phone_number,
-            });
-          }
-        });
-        setChats(Array.from(chatMap.values()));
+        setMessages(data || []);
       } catch (error: any) {
         toast({
-          title: "Error fetching chats",
+          title: "Error fetching messages",
           description: error.message,
           variant: "destructive",
         });
       } finally {
-        setIsLoadingChats(false);
+        setIsLoadingMessages(false);
       }
-    }, [client, selectedAppId]);
+    },
+    [client, selectedAppId],
+  );
 
-    const fetchMessages = useCallback(
-      async (phone: string) => {
-        if (!client) return;
-        setIsLoadingMessages(true);
-        try {
-          const { data, error } = await supabase
-            .from("whatsapp_messages")
-            .select("*")
-            .eq("client_id", client.id)
-            .eq("phone_number", phone)
-            .order("sent_at", { ascending: true });
-          if (error) throw error;
-          setMessages(data || []);
-        } catch (error: any) {
+  useEffect(() => {
+    fetchChats();
+  }, [fetchChats]);
+
+  useEffect(() => {
+    if (activeChatId) {
+      fetchMessages(activeChatId);
+      const channel = supabase
+        .channel(`whatsapp_messages:${activeChatId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "whatsapp_messages",
+            filter: `phone_number=eq.${activeChatId}`,
+          },
+          (payload) => setMessages((prev) => [...prev, payload.new]),
+        )
+        .subscribe();
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [activeChatId, fetchMessages]);
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !activeChatId || !selectedAppId || !client)
+      return;
+    setIsSending(true);
+    const bot = assignedBots?.find((b) => b.id === selectedAppId);
+    try {
+      if (bot?.provider_type === "api") {
+        const result = await sendWhatsAppMessage(
+          {
+            to: activeChatId,
+            body: messageInput.trim(),
+            application_id: selectedAppId,
+            client_id: client.id,
+            phoneNoId: bot.api_config?.phone_id,
+            type: "text",
+          },
+          bot.api_config?.api_key,
+        );
+        if (result.success) setMessageInput("");
+        else
           toast({
-            title: "Error fetching messages",
-            description: error.message,
+            title: "Error",
+            description: result.message,
             variant: "destructive",
           });
-        } finally {
-          setIsLoadingMessages(false);
-        }
-      },
-      [client, selectedAppId],
-    );
-
-    useEffect(() => {
-      fetchChats();
-    }, [fetchChats]);
-
-    useEffect(() => {
-      if (activeChatId) {
-        fetchMessages(activeChatId);
-        const channel = supabase
-          .channel(`whatsapp_messages:${activeChatId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "whatsapp_messages",
-              filter: `phone_number=eq.${activeChatId}`,
-            },
-            (payload) => setMessages((prev) => [...prev, payload.new]),
-          )
-          .subscribe();
-        return () => {
-          supabase.removeChannel(channel);
-        };
-      }
-    }, [activeChatId, fetchMessages]);
-
-    const handleSendMessage = async () => {
-      if (!messageInput.trim() || !activeChatId || !selectedAppId || !client)
-        return;
-      setIsSending(true);
-      const bot = assignedBots?.find((b) => b.id === selectedAppId);
-      try {
-        if (bot?.provider_type === "api") {
-          const result = await sendWhatsAppMessage(
-            {
-              to: activeChatId,
-              body: messageInput.trim(),
-              application_id: selectedAppId,
-              client_id: client.id,
-              phoneNoId: bot.api_config?.phone_id,
-              type: "text",
-            },
-            bot.api_config?.api_key,
-          );
-          if (result.success) setMessageInput("");
-          else
-            toast({
-              title: "Error",
-              description: result.message,
-              variant: "destructive",
-            });
-        } else {
-          const { error } = await (supabase.from("whatsapp_messages") as any).insert({
-            client_id: client.id,
-            application_id: selectedAppId,
-            phone_number: activeChatId,
-            message_type: "text",
-            message_content: messageInput.trim(),
-            direction: "outbound",
-            status: "queued",
-            sent_at: new Date().toISOString(),
-          } as any);
-          if (error) throw error;
-          setMessageInput("");
-        }
-      } catch (error: any) {
-        toast({
-          title: "Error sending message",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setIsSending(false);
-      }
-    };
-
-    const handleDeleteSelected = async () => {
-      if (selectedChats.size === 0 || !client) return;
-      const confirmDelete = window.confirm(`Are you sure you want to delete ${selectedChats.size} conversation(s)? This will delete all messages in these chats.`);
-      if (!confirmDelete) return;
-
-      try {
-        const phoneNumbers = Array.from(selectedChats);
-        
-        // Delete messages associated with these phone numbers for this client
-        const { error } = await supabase
-          .from("whatsapp_messages")
-          .delete()
-          .eq("client_id", client.id)
-          .in("phone_number", phoneNumbers);
-
-        if (error) throw error;
-
-        toast({
-          title: "Conversations deleted",
-          description: `Successfully deleted ${selectedChats.size} conversation(s).`,
-        });
-
-        // Update local state
-        setChats((prev) => prev.filter((c) => !selectedChats.has(c.id)));
-        if (activeChatId && selectedChats.has(activeChatId)) {
-          setActiveChatId(null);
-        }
-        
-        setIsSelectionMode(false);
-        setSelectedChats(new Set());
-      } catch (error: any) {
-        toast({
-          title: "Error deleting conversations",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    };
-
-    const toggleSelection = (chatId: string) => {
-      setSelectedChats((prev) => {
-        const next = new Set(prev);
-        if (next.has(chatId)) {
-          next.delete(chatId);
-        } else {
-          next.add(chatId);
-        }
-        return next;
-      });
-    };
-
-    const toggleSelectAll = () => {
-      if (selectedChats.size === filteredChats.length && filteredChats.length > 0) {
-        setSelectedChats(new Set());
       } else {
-        setSelectedChats(new Set(filteredChats.map((c) => c.id)));
+        const { error } = await (supabase.from("whatsapp_messages") as any).insert({
+          client_id: client.id,
+          application_id: selectedAppId,
+          phone_number: activeChatId,
+          message_type: "text",
+          message_content: messageInput.trim(),
+          direction: "outbound",
+          status: "queued",
+          sent_at: new Date().toISOString(),
+        } as any);
+        if (error) throw error;
+        setMessageInput("");
       }
-    };
+    } catch (error: any) {
+      toast({
+        title: "Error sending message",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
-    const filteredChats = useMemo(
-      () =>
-        chats.filter(
-          (chat) =>
-            chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            chat.phone.includes(searchQuery),
-        ),
-      [chats, searchQuery],
-    );
+  const handleDeleteSelected = async () => {
+    if (selectedChats.size === 0 || !client) return;
+    setShowDeleteConfirm(false);
 
-    useEffect(() => {
-      if (isMobileMode) return;
-      if (activeChatId) return;
-      if (filteredChats.length === 0) return;
+    try {
+      const phoneNumbers = Array.from(selectedChats);
 
-      setActiveChatId(filteredChats[0].id);
-    }, [isMobileMode, activeChatId, filteredChats]);
+      // Delete messages associated with these phone numbers for this client
+      const { error } = await (supabase as any)
+        .from("whatsapp_messages")
+        .delete()
+        .eq("client_id", client.id)
+        .in("phone_number", phoneNumbers);
 
-    const isOutboundMessage = (msg: any) =>
-      msg.direction === "outbound" ||
-      ["sent", "delivered", "read", "queued", "failed"].includes(msg.status);
+      if (error) throw error;
 
-    return (
-      <div className="flex flex-1 w-full min-w-0 min-h-0 overflow-hidden flex-col xl:flex-row rounded-none xl:rounded-3xl xl:border xl:border-slate-200 bg-white xl:shadow-2xl">
+      toast({
+        title: "Conversations deleted",
+        description: `Successfully deleted ${selectedChats.size} conversation(s).`,
+      });
+
+      // Update local state
+      setChats((prev) => prev.filter((c) => !selectedChats.has(c.id)));
+      if (activeChatId && selectedChats.has(activeChatId)) {
+        setActiveChatId(null);
+      }
+
+      setIsSelectionMode(false);
+      setSelectedChats(new Set());
+    } catch (error: any) {
+      toast({
+        title: "Error deleting conversations",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleSelection = (chatId: string) => {
+    setSelectedChats((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) {
+        next.delete(chatId);
+      } else {
+        next.add(chatId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedChats.size === filteredChats.length && filteredChats.length > 0) {
+      setSelectedChats(new Set());
+    } else {
+      setSelectedChats(new Set(filteredChats.map((c) => c.id)));
+    }
+  };
+
+  const filteredChats = useMemo(
+    () =>
+      chats.filter(
+        (chat) =>
+          chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          chat.phone.includes(searchQuery),
+      ),
+    [chats, searchQuery],
+  );
+
+  useEffect(() => {
+    if (isMobileMode) return;
+    if (activeChatId) return;
+    if (filteredChats.length === 0) return;
+
+    setActiveChatId(filteredChats[0].id);
+  }, [isMobileMode, activeChatId, filteredChats]);
+
+  const isOutboundMessage = (msg: any) =>
+    msg.direction === "outbound" ||
+    ["sent", "delivered", "read", "queued", "failed"].includes(msg.status);
+
+  return (
+    <>
+      {/* ── Delete Confirmation Dialog ─────────────────────────── */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-900">Delete Conversations?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500">
+              This will permanently delete <span className="font-bold text-slate-700">{selectedChats.size} conversation{selectedChats.size !== 1 ? "s" : ""}</span> and all their messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteSelected}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="flex flex-1 w-full min-w-0 min-h-0 overflow-hidden flex-col xl:flex-row rounded-none xl:rounded-3xl xl:border xl:border-slate-200 bg-white xl:shadow-2xl h-full">
         {/* ── LEFT PANEL: Contact list ─────────────────────────── */}
         {showListPanel && (
           <div
             className={cn(
-              "flex flex-col bg-white border-r border-slate-200/60 min-w-0",
+              "flex flex-col bg-white border-r border-slate-200/60 min-w-0 min-h-0 overflow-hidden",
               isMobileMode
-                ? "w-full flex-1 min-h-0"
-                : "w-56 2xl:w-72 shrink-0",
+                ? "w-full flex-1"
+                : "w-72 2xl:w-80 shrink-0 h-full",
             )}
           >
             {/* Header */}
@@ -653,7 +663,7 @@
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={handleDeleteSelected}
+                      onClick={() => setShowDeleteConfirm(true)}
                       disabled={selectedChats.size === 0}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -708,7 +718,7 @@
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="relative group">
+                  <div className="relative group mx-2">
                     <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-all group-focus-within:text-blue-600" />
                     <Input
                       placeholder="Search conversations..."
@@ -725,7 +735,7 @@
             <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-4 h-full">
               {isLoadingChats ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
+                  <Loader2 className="mb-2 h-8 w-8 animate-spin text-blue-600" />
                   <p className="text-xs font-bold uppercase tracking-widest">
                     Scanning Inbox...
                   </p>
@@ -743,24 +753,27 @@
                         }
                       }}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-2xl px-3 py-3 min-w-0 transition-all duration-200 relative text-left",
+                        "relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 min-w-0 text-left transition-all duration-200",
                         activeChatId === chat.id && !isMobileMode && !isSelectionMode
-                          ? "bg-blue-50 border border-blue-100"
-                          : "hover:bg-slate-50 active:scale-[0.98]",
-                        isSelectionMode && selectedChats.has(chat.id) && "bg-slate-50"
+                          ? "border border-blue-100 bg-blue-50 shadow-sm"
+                          : "hover:bg-slate-50 active:scale-[0.985]",
+                        isSelectionMode && selectedChats.has(chat.id) && "bg-slate-50",
                       )}
                     >
                       {activeChatId === chat.id && !isMobileMode && !isSelectionMode && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-7 bg-blue-600 rounded-r-full" />
+                        <div className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-blue-600" />
                       )}
-                      
+
                       {isSelectionMode && (
-                        <div className="shrink-0 mr-1" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="mr-1 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             checked={selectedChats.has(chat.id)}
                             onChange={() => toggleSelection(chat.id)}
-                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                           />
                         </div>
                       )}
@@ -787,16 +800,17 @@
                           )}
                         />
                       </div>
-                      <div className="flex flex-1 flex-col items-start overflow-hidden min-w-0 w-0">
-                        <div className="flex w-full items-center justify-between mb-0.5">
+
+                      <div className="flex min-w-0 w-0 flex-1 flex-col items-start overflow-hidden">
+                        <div className="mb-0.5 flex w-full items-center justify-between">
                           <span className="truncate text-sm font-bold text-slate-900">
                             {chat.name}
                           </span>
-                          <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap ml-2 shrink-0">
+                          <span className="ml-2 shrink-0 whitespace-nowrap text-[10px] font-semibold text-slate-400">
                             {chat.time}
                           </span>
                         </div>
-                        <span className="truncate text-[11px] font-medium text-slate-500 w-full block">
+                        <span className="block w-full truncate text-[11px] font-medium text-slate-500">
                           {chat.lastMessage}
                         </span>
                       </div>
@@ -805,7 +819,7 @@
                 </div>
               ) : (
                 <div className="py-20 text-center">
-                  <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 mb-4">
+                  <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
                     <MessageSquare className="h-7 w-7" />
                   </div>
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
@@ -822,7 +836,7 @@
           <div
             className={cn(
               "flex flex-col overflow-hidden bg-slate-50/30 min-w-0 min-h-0",
-              isMobileMode ? "w-full flex-1" : "flex-1",
+              isMobileMode ? "w-full flex-1" : "flex-1 h-full",
             )}
           >
             <AnimatePresence mode="wait">
@@ -924,11 +938,8 @@
                       backgroundSize: "400px",
                     }}
                   >
-                    <ScrollArea
-                      className="h-full px-3 py-4 md:px-5"
-                      viewportRef={scrollRef}
-                    >
-                      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+                    <div ref={scrollRef} className="h-full overflow-y-auto">
+                      <div className="flex w-full flex-col gap-4 px-3 py-4 md:px-5">
                         {messages.length === 0 && !isLoadingMessages && (
                           <div className="flex flex-col items-center justify-center py-20 opacity-40">
                             <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
@@ -943,7 +954,7 @@
                           <div
                             key={msg.id}
                             className={cn(
-                              "flex items-end gap-2",
+                              "flex w-full items-end gap-2",
                               isOutboundMessage(msg)
                                 ? "flex-row-reverse"
                                 : "flex-row",
@@ -965,41 +976,41 @@
                               className={cn(
                                 "flex max-w-[78%] flex-col gap-1",
                                 isOutboundMessage(msg)
-                                  ? "items-end"
-                                  : "items-start",
+                                  ? "items-end ml-auto"
+                                  : "items-start mr-auto",
                               )}
                             >
                               <div
                                 className={cn(
-                                  "rounded-2xl px-4 py-2.5 shadow-sm text-[13px] font-medium leading-relaxed",
+                                  "rounded-2xl px-4 py-2.5 text-[13px] font-medium leading-relaxed shadow-sm break-words whitespace-pre-wrap",
                                   isOutboundMessage(msg)
                                     ? "rounded-br-none bg-blue-600 text-white"
-                                    : "rounded-bl-none bg-white text-slate-800 border border-slate-100",
+                                    : "rounded-bl-none border border-slate-100 bg-white text-slate-800",
                                 )}
                               >
                                 {msg.message_type === 'image' && (msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) ? (
                                   <div className="flex flex-col gap-2">
-                                    <img 
-                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl} 
-                                      alt="attachment" 
-                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5" 
+                                    <img
+                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl}
+                                      alt="attachment"
+                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5"
                                     />
                                     {msg.message_content && <span>{msg.message_content}</span>}
                                   </div>
                                 ) : msg.message_type === 'video' && (msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) ? (
                                   <div className="flex flex-col gap-2">
-                                    <video 
-                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl} 
+                                    <video
+                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl}
                                       controls
-                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5" 
+                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5"
                                     />
                                     {msg.message_content && <span>{msg.message_content}</span>}
                                   </div>
                                 ) : (msg.message_type === 'document' || msg.message_type === 'audio' || msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) && msg.message_type !== 'text' ? (
                                   <div className="flex flex-col gap-2">
-                                    <a 
-                                      href={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl || "#"} 
-                                      target="_blank" 
+                                    <a
+                                      href={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl || "#"}
+                                      target="_blank"
                                       rel="noopener noreferrer"
                                       className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors"
                                     >
@@ -1027,8 +1038,10 @@
                             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                           </div>
                         )}
+                        {/* Scroll sentinel – always stays at bottom */}
+                        <div ref={bottomRef} className="h-0 w-full" />
                       </div>
-                    </ScrollArea>
+                    </div>
                   </div>
 
                   {/* Message input – fixed at bottom, never scrolls */}
@@ -1205,5 +1218,6 @@
           </div>
         )}
       </div>
-    );
-  }
+    </>
+  );
+}

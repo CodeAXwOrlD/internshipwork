@@ -76,19 +76,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Translate payload if it's a message
-    // Normalize incoming payload keys to what WhapiHub expects.
-    const whapiPayload: any = { ...payload };
-    if (payload.text && !payload.body) whapiPayload.body = payload.text;
-    if (to) whapiPayload.to = to;
-    // WhapiHub expects the phone number identifier under `phone_number_id` (or `phone_id`).
-    // Our frontend may send `phoneNoId` or `phone_id` — normalize to `phone_number_id` to avoid channel lookup failures.
-    if (payload.phoneNoId && !whapiPayload.phone_number_id)
-      whapiPayload.phone_number_id = payload.phoneNoId;
-    if (payload.phone_id && !whapiPayload.phone_number_id)
-      whapiPayload.phone_number_id = payload.phone_id;
-    if (payload.phoneNumberId && !whapiPayload.phone_number_id)
-      whapiPayload.phone_number_id = payload.phoneNumberId;
+    // 3. Translate payload to WhapiHub format
+    const messageType = payload.type || "text";
+    const whapiPayload: any = {
+      to: to,
+      phoneNoId: payload.phoneNoId || payload.phone_id || payload.phoneNumberId,
+      type: messageType,
+    };
+
+    if (messageType === "text") {
+      whapiPayload.text = payload.text || payload.body || "";
+    } else if (["image", "video", "document", "audio"].includes(messageType)) {
+      whapiPayload.mediaUrl = payload.mediaUrl;
+      whapiPayload.caption =
+        payload.caption || payload.body || payload.text || "";
+      if (payload.fileName) whapiPayload.fileName = payload.fileName;
+    } else if (messageType === "template") {
+      whapiPayload.name = payload.name || payload.template?.name;
+      whapiPayload.language =
+        payload.language || payload.template?.language?.code || "en_US";
+    }
 
     const whapiEndpoint = `${baseUrl}/${targetPath}`;
     console.log(`Forwarding to: ${whapiEndpoint}`);

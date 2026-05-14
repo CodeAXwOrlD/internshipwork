@@ -5,6 +5,7 @@ export interface UploadOptions {
   folder?: string;
   file: File;
   onProgress?: (progress: number) => void;
+  signedUrl?: boolean;
 }
 
 export interface UploadResult {
@@ -17,7 +18,7 @@ export interface UploadResult {
  * Upload file to Supabase Storage
  */
 export async function uploadFile(options: UploadOptions): Promise<UploadResult> {
-  const { bucket, folder, file } = options;
+  const { bucket, folder, file, signedUrl = false } = options;
 
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -32,10 +33,12 @@ export async function uploadFile(options: UploadOptions): Promise<UploadResult> 
 
   if (error) throw error;
 
-  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+  const { data: urlData } = signedUrl
+    ? await supabase.storage.from(bucket).createSignedUrl(filePath, 3600)
+    : supabase.storage.from(bucket).getPublicUrl(filePath);
 
   return {
-    url: urlData.publicUrl,
+    url: signedUrl ? urlData.signedUrl : urlData.publicUrl,
     path: filePath,
     fullPath: data.path,
   };

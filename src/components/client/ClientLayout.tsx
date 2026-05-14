@@ -45,8 +45,8 @@ function ClientLayoutInner() {
       
       <div className={cn(
         "flex-1 flex flex-col h-screen overflow-hidden",
-        // shift the main content to the right on md+ for the tablet rail and lg+ for the expanded sidebar
-        collapsed ? "md:ml-20 lg:ml-20" : "md:ml-20 lg:ml-64"
+        // shift the main content to the right to match sidebar width on md+
+        collapsed ? "md:ml-20" : "md:ml-64"
       )}>
         <ClientHeader
           onMenuClick={() => setSidebarOpen(true)}
@@ -56,9 +56,9 @@ function ClientLayoutInner() {
 
         <main 
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto pt-14 md:pt-16 pb-16 md:pb-0"
+          className="flex-1 flex flex-col overflow-y-auto pt-14 md:pt-16 pb-16 md:pb-0"
         >
-          <div className="p-4 md:p-5 lg:p-6 max-w-[1100px] lg:max-w-[1600px] mx-auto">
+          <div className="flex-1 flex flex-col p-4 md:p-5 lg:p-6 max-w-[1100px] lg:max-w-[1600px] mx-auto w-full">
             <Outlet />
           </div>
         </main>

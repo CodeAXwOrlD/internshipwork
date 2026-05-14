@@ -269,7 +269,7 @@ export default function LiveChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] overflow-hidden rounded-3xl bg-white/50 bg-opacity-95 border border-primary/10 shadow-2xl">
+    <div className="flex flex-1 min-h-0 overflow-hidden rounded-3xl bg-white/50 bg-opacity-95 border border-primary/10 shadow-2xl">
       
       {/* 1. Sidebar: Chat List */}
       <div className={cn(

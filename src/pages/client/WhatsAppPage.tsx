@@ -548,7 +548,7 @@ export default function WhatsAppPage() {
       : campaigns.filter((c) => c.status === campaignTab);
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden h-full">
+    <div className="flex flex-col md:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden flex-1 min-h-0">
       <div className="w-full md:w-44 md:shrink-0">
         <div className="flex flex-row md:flex-col gap-1 sticky top-0 md:top-6 overflow-x-auto md:overflow-x-visible no-scrollbar pb-2 md:pb-0 scrollbar-hide">
           {tabs.map((tab) => {
@@ -575,7 +575,7 @@ export default function WhatsAppPage() {
 
       <div
         className={cn(
-          "flex-1 min-w-0 flex flex-col transition-all",
+          "flex-1 min-w-0 flex flex-col transition-all min-h-0",
           mainTab === "inbox"
             ? "flex-1 min-h-0 -mx-4 md:mx-0 -mb-4 md:mb-0"
             : "h-auto space-y-4 md:space-y-6",
@@ -583,13 +583,12 @@ export default function WhatsAppPage() {
       >
         <div
           className={cn(
-            "bg-white/50 backdrop-blur-sm border border-slate-200/60 rounded-3xl p-3 md:p-6 shadow-sm mb-4 md:mb-6 transition-all",
-            mainTab === "inbox" && "hidden md:block",
+            "bg-white/50 backdrop-blur-sm border border-slate-200/60 rounded-3xl px-4 py-3 md:p-6 shadow-sm mb-4 md:mb-6 transition-all"
           )}
         >
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-green-500/10 shadow-inner shrink-0">
+              <div className="ml-2 md:ml-0 h-12 w-12 flex items-center justify-center rounded-2xl bg-green-500/10 shadow-inner shrink-0">
                 <MessageCircle className="h-7 w-7 text-[#25D366]" />
               </div>
               <div className="min-w-0">
@@ -628,8 +627,8 @@ export default function WhatsAppPage() {
                 </Select>
               )}
 
-              <div className="h-10 px-4 flex items-center bg-white border border-slate-200 rounded-xl shadow-sm">
-                <p className="text-xs font-bold text-slate-600">
+              <div className="min-w-[110px] h-9 px-2.5 flex items-center justify-center bg-white border border-slate-200 rounded-xl shadow-sm">
+                <p className="text-[10px] font-bold text-slate-600 truncate">
                   <span className="text-blue-600">
                     {Math.max(
                       stats?.total || 0,
@@ -646,19 +645,19 @@ export default function WhatsAppPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-10 px-4 text-xs font-bold rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-blue-700 transition-all active:scale-95"
+                className="h-9 px-3 text-[10px] font-bold rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-blue-700 transition-all active:scale-95 whitespace-nowrap"
                 onClick={() => setCampaignWizardOpen(true)}
                 disabled={assignedBots.length === 0}
               >
-                <Plus className="h-4 w-4 mr-2 text-blue-600" /> Campaign
+                <Plus className="h-3 w-3 mr-1 text-blue-600" /> Campaign
               </Button>
               <Button
                 size="sm"
-                className="h-10 px-5 text-xs font-bold rounded-xl shadow-lg shadow-blue-500/25 bg-blue-600 hover:bg-blue-700 transition-all active:scale-95 text-white"
+                className="h-9 px-3 text-[10px] font-bold rounded-xl shadow-lg shadow-blue-500/25 bg-blue-600 hover:bg-blue-700 transition-all active:scale-95 text-white whitespace-nowrap"
                 onClick={() => setSendModalOpen(true)}
                 disabled={assignedBots.length === 0}
               >
-                <Send className="h-4 w-4 mr-2" /> Message
+                <Send className="h-3 w-3 mr-1" /> Message
               </Button>
             </div>
           </div>

@@ -57,7 +57,12 @@ Deno.serve(async (req) => {
 
     // 2. Extract common fields
     const to = payload.to?.replace(/[+\s-]/g, "");
-    const messageText = payload.text || payload.body || "";
+    // Extract message text: handle both { text: { body: "hi" } } and { text: "hi" } and { body: "hi" }
+    const rawText = payload.text;
+    const messageText =
+      typeof rawText === "object" && rawText !== null
+        ? rawText.body || ""
+        : rawText || payload.body || "";
     const clientId = payload.client_id;
     const appId = payload.application_id || payload.phoneNoId;
 
@@ -85,12 +90,22 @@ Deno.serve(async (req) => {
     };
 
     if (messageType === "text") {
-      whapiPayload.text = payload.text || payload.body || "";
+      // The API expects: { text: { body: "message text" } } OR it might just be { text: "message text" } depending on the exact WhapiHub version.
+      // Wait, the error was "JSON schema constraint 'type' for the JSON field 'text.body'... expected: 'string'".
+      // This means it expects `{ text: { body: "string" } }`. 
+      // Our previous code sent `{ text: { body: "string" } }` from the client, but the bridge was doing:
+      // `whapiPayload.text = payload.text || payload.body || "";`
+      // Since `payload.text` from the client is `{ body: "hi" }`, `whapiPayload.text` became `{ body: "hi" }`.
+      // This should have worked! Wait.
+      // What if the client sent `{ text: { body: "hi" } }` but the bridge did `whapiPayload.text = payload.text` which is fine.
+      // BUT what if `messageText` was an object and we just need to ensure `whapiPayload.text.body` is specifically a string?
+      whapiPayload.text = messageText;
     } else if (["image", "video", "document", "audio"].includes(messageType)) {
-      whapiPayload.mediaUrl = payload.mediaUrl;
-      whapiPayload.caption =
-        payload.caption || payload.body || payload.text || "";
-      if (payload.fileName) whapiPayload.fileName = payload.fileName;
+      whapiPayload.url = payload.mediaUrl || payload.url;
+      whapiPayload.caption = payload.caption || payload.body || "";
+      if (messageType === "document" && payload.fileName) {
+        whapiPayload.filename = payload.fileName;
+      }
     } else if (messageType === "template") {
       whapiPayload.name = payload.name || payload.template?.name;
       whapiPayload.language =
@@ -98,7 +113,7 @@ Deno.serve(async (req) => {
     }
 
     const whapiEndpoint = `${baseUrl}/${targetPath}`;
-    console.log(`Forwarding to: ${whapiEndpoint}`);
+    console.log(`Forwarding to: ${whapiEndpoint}`, JSON.stringify(whapiPayload));
 
     const whapiResponse = await fetch(whapiEndpoint, {
       method: req.method,

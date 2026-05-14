@@ -21,9 +21,24 @@
     Camera,
     User,
     ArrowLeft,
+    Archive,
+    Trash2,
+    Filter,
+    CheckSquare,
+    Settings,
+    Download,
+    Ban,
   } from "lucide-react";
   import { Input } from "@/components/ui/input";
   import { Button } from "@/components/ui/button";
+  import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu";
   import { ScrollArea } from "@/components/ui/scroll-area";
   import { Avatar, AvatarFallback } from "@/components/ui/avatar";
   import { cn } from "@/lib/utils";
@@ -174,6 +189,10 @@
     const [isLoadingChats, setIsLoadingChats] = useState(true);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    
+    // Bulk selection state
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
 
     // true = narrow screen (mobile/tablet): navigate list -> chat
     // false = wide screen (desktop): show both panels side by side
@@ -516,6 +535,65 @@
       }
     };
 
+    const handleDeleteSelected = async () => {
+      if (selectedChats.size === 0 || !client) return;
+      const confirmDelete = window.confirm(`Are you sure you want to delete ${selectedChats.size} conversation(s)? This will delete all messages in these chats.`);
+      if (!confirmDelete) return;
+
+      try {
+        const phoneNumbers = Array.from(selectedChats);
+        
+        // Delete messages associated with these phone numbers for this client
+        const { error } = await supabase
+          .from("whatsapp_messages")
+          .delete()
+          .eq("client_id", client.id)
+          .in("phone_number", phoneNumbers);
+
+        if (error) throw error;
+
+        toast({
+          title: "Conversations deleted",
+          description: `Successfully deleted ${selectedChats.size} conversation(s).`,
+        });
+
+        // Update local state
+        setChats((prev) => prev.filter((c) => !selectedChats.has(c.id)));
+        if (activeChatId && selectedChats.has(activeChatId)) {
+          setActiveChatId(null);
+        }
+        
+        setIsSelectionMode(false);
+        setSelectedChats(new Set());
+      } catch (error: any) {
+        toast({
+          title: "Error deleting conversations",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    };
+
+    const toggleSelection = (chatId: string) => {
+      setSelectedChats((prev) => {
+        const next = new Set(prev);
+        if (next.has(chatId)) {
+          next.delete(chatId);
+        } else {
+          next.add(chatId);
+        }
+        return next;
+      });
+    };
+
+    const toggleSelectAll = () => {
+      if (selectedChats.size === filteredChats.length && filteredChats.length > 0) {
+        setSelectedChats(new Set());
+      } else {
+        setSelectedChats(new Set(filteredChats.map((c) => c.id)));
+      }
+    };
+
     const filteredChats = useMemo(
       () =>
         chats.filter(
@@ -539,7 +617,7 @@
       ["sent", "delivered", "read", "queued", "failed"].includes(msg.status);
 
     return (
-      <div className="flex h-full w-full min-w-0 overflow-hidden flex-1 flex-col xl:flex-row lg:rounded-3xl lg:border lg:border-slate-200 bg-white lg:shadow-2xl">
+      <div className="flex flex-1 w-full min-w-0 min-h-0 overflow-hidden flex-col xl:flex-row rounded-none xl:rounded-3xl xl:border xl:border-slate-200 bg-white xl:shadow-2xl">
         {/* ── LEFT PANEL: Contact list ─────────────────────────── */}
         {showListPanel && (
           <div
@@ -547,32 +625,100 @@
               "flex flex-col bg-white border-r border-slate-200/60 min-w-0",
               isMobileMode
                 ? "w-full flex-1 min-h-0"
-                : "w-full xl:w-56 2xl:w-72 shrink-0 h-full",
+                : "w-56 2xl:w-72 shrink-0",
             )}
           >
             {/* Header */}
             <div className="flex-shrink-0 px-4 pt-3 pb-3 space-y-3">
-                <div className="flex items-center justify-between">
-                <h2 className="pl-3 text-lg font-bold tracking-tight text-slate-900">
-                  Messages
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="relative group">
-                <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-all group-focus-within:text-blue-600" />
-                <Input
-                  placeholder="Search conversations..."
-                  className="h-9 border-slate-200 bg-slate-50 pl-9 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all text-xs font-semibold"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+              {isSelectionMode ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
+                        onClick={() => {
+                          setIsSelectionMode(false);
+                          setSelectedChats(new Set());
+                        }}
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                      <h2 className="text-lg font-bold tracking-tight text-slate-900">
+                        {selectedChats.size} Selected
+                      </h2>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600"
+                      onClick={handleDeleteSelected}
+                      disabled={selectedChats.size === 0}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3 px-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedChats.size === filteredChats.length && filteredChats.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-semibold text-slate-600">Select All</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h2 className="pl-3 text-lg font-bold tracking-tight text-slate-900">
+                      Messages
+                    </h2>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                        <DropdownMenuLabel className="text-xs tracking-wider uppercase text-slate-500">Inbox Options</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="cursor-pointer gap-2 py-2" onClick={() => setIsSelectionMode(true)}>
+                          <CheckSquare className="h-4 w-4" />
+                          <span>Delete messages</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                          <Filter className="h-4 w-4" />
+                          <span>Filter unread messages</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                          <Archive className="h-4 w-4" />
+                          <span>Archive all conversations</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                          <Settings className="h-4 w-4" />
+                          <span>Inbox Settings</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="relative group">
+                    <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-all group-focus-within:text-blue-600" />
+                    <Input
+                      placeholder="Search conversations..."
+                      className="h-9 border-slate-200 bg-slate-50 pl-9 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all text-xs font-semibold"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Scrollable list */}
@@ -589,17 +735,36 @@
                   {filteredChats.map((chat) => (
                     <button
                       key={chat.id}
-                      onClick={() => handleSelectChat(chat.id)}
+                      onClick={(e) => {
+                        if (isSelectionMode) {
+                          toggleSelection(chat.id);
+                        } else {
+                          handleSelectChat(chat.id);
+                        }
+                      }}
                       className={cn(
                         "flex w-full items-center gap-3 rounded-2xl px-3 py-3 min-w-0 transition-all duration-200 relative text-left",
-                        activeChatId === chat.id && !isMobileMode
+                        activeChatId === chat.id && !isMobileMode && !isSelectionMode
                           ? "bg-blue-50 border border-blue-100"
                           : "hover:bg-slate-50 active:scale-[0.98]",
+                        isSelectionMode && selectedChats.has(chat.id) && "bg-slate-50"
                       )}
                     >
-                      {activeChatId === chat.id && !isMobileMode && (
+                      {activeChatId === chat.id && !isMobileMode && !isSelectionMode && (
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-7 bg-blue-600 rounded-r-full" />
                       )}
+                      
+                      {isSelectionMode && (
+                        <div className="shrink-0 mr-1" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedChats.has(chat.id)}
+                            onChange={() => toggleSelection(chat.id)}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                        </div>
+                      )}
+
                       <div className="relative shrink-0">
                         <Avatar className="h-10 w-10 border-2 border-white shadow-md">
                           <AvatarFallback
@@ -656,8 +821,8 @@
         {showChatPanel && (
           <div
             className={cn(
-              "flex flex-col h-full overflow-hidden bg-slate-50/30 min-w-0",
-              isMobileMode ? "w-full h-full" : "flex-1",
+              "flex flex-col overflow-hidden bg-slate-50/30 min-w-0 min-h-0",
+              isMobileMode ? "w-full flex-1" : "flex-1",
             )}
           >
             <AnimatePresence mode="wait">
@@ -708,13 +873,44 @@
                       >
                         <Phone className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border-slate-200">
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                            <User className="h-4 w-4 text-slate-500" />
+                            <span className="font-medium text-slate-700">Contact Info</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                            <Search className="h-4 w-4 text-slate-500" />
+                            <span className="font-medium text-slate-700">Search Chat</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                            <Download className="h-4 w-4 text-slate-500" />
+                            <span className="font-medium text-slate-700">Export Chat</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2 text-yellow-600 focus:text-yellow-700 focus:bg-yellow-50">
+                            <Archive className="h-4 w-4" />
+                            <span className="font-medium">Archive Chat</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50">
+                            <Ban className="h-4 w-4" />
+                            <span className="font-medium">Block Contact</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50">
+                            <Trash2 className="h-4 w-4" />
+                            <span className="font-medium">Clear Chat</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 
@@ -781,7 +977,42 @@
                                     : "rounded-bl-none bg-white text-slate-800 border border-slate-100",
                                 )}
                               >
-                                {msg.message_content}
+                                {msg.message_type === 'image' && (msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) ? (
+                                  <div className="flex flex-col gap-2">
+                                    <img 
+                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl} 
+                                      alt="attachment" 
+                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5" 
+                                    />
+                                    {msg.message_content && <span>{msg.message_content}</span>}
+                                  </div>
+                                ) : msg.message_type === 'video' && (msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) ? (
+                                  <div className="flex flex-col gap-2">
+                                    <video 
+                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl} 
+                                      controls
+                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5" 
+                                    />
+                                    {msg.message_content && <span>{msg.message_content}</span>}
+                                  </div>
+                                ) : (msg.message_type === 'document' || msg.message_type === 'audio' || msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) && msg.message_type !== 'text' ? (
+                                  <div className="flex flex-col gap-2">
+                                    <a 
+                                      href={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl || "#"} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors"
+                                    >
+                                      <FileText className="h-5 w-5 shrink-0" />
+                                      <span className="truncate underline font-semibold text-xs">
+                                        {msg.metadata?.attachment?.fileName || "View Attachment"}
+                                      </span>
+                                    </a>
+                                    {msg.message_content && <span>{msg.message_content}</span>}
+                                  </div>
+                                ) : (
+                                  msg.message_content
+                                )}
                               </div>
                               <span className="text-[10px] font-medium text-slate-400">
                                 {msg.sent_at

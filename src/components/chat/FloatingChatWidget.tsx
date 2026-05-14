@@ -185,7 +185,7 @@ export default function FloatingChatWidget() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-16 right-4 md:bottom-6 md:right-6 h-14 w-14 md:h-16 md:w-16 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center z-50 overflow-hidden group"
+            className="fixed bottom-28 right-4 md:bottom-24 md:right-8 h-14 w-14 md:h-16 md:w-16 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center z-50 overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-primary to-blue-600 opacity-100 group-hover:opacity-90 transition-opacity" />
             <Sparkles className="w-6 h-6 md:w-8 md:h-8 relative z-10" />
@@ -206,7 +206,7 @@ export default function FloatingChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-20 right-4 left-4 md:left-auto md:bottom-6 md:right-6 md:w-[380px] h-[600px] max-h-[70vh] md:max-h-[85vh] bg-white rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden border border-primary/20"
+            className="fixed bottom-28 right-4 left-4 md:left-auto md:bottom-24 md:right-8 md:w-[380px] h-[600px] max-h-[70vh] md:max-h-[85vh] bg-white rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden border border-primary/20"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-blue-600 p-4 text-white flex items-center justify-between shadow-md relative z-10">

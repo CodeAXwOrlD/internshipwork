@@ -118,10 +118,8 @@ export async function sendWhatsAppMessage(
         params.body || params.text || params.attachment?.caption;
       requestBody.fileName = params.attachment?.fileName;
     } else {
-      requestBody.text = {
-        body: params.body || params.text || "",
-      };
-    }
+      requestBody.text = params.body || params.text || "";
+    } 
 
 
     // Ensure URL has trailing slash if we are hitting the root of the bridge

@@ -82,6 +82,11 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
     return path === activePath;
   };
 
+  // Derived: is the sidebar visually in "expanded" mode (showing labels)?
+  // On mobile (<md), the overlay is always expanded when open.
+  // On md+, it depends on the collapsed state.
+  const isExpanded = !collapsed;
+
   return (
     <>
       <AnimatePresence>
@@ -100,27 +105,29 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-sidebar flex flex-col border-r border-sidebar-border overflow-hidden transition-[width] duration-300 ease-in-out",
-          // Keep a compact rail on tablets (md) and only expand on large screens
-          "md:translate-x-0 md:w-20",
-          collapsed ? "lg:w-20" : "lg:w-64",
-          open ? "translate-x-0" : "-translate-x-full md:-translate-x-0",
-          "w-64"
+          // Mobile (<md): full-width overlay, slides in/out
+          "w-64",
+          open ? "translate-x-0" : "-translate-x-full",
+          // md+: always visible, width depends on collapsed state
+          "md:translate-x-0",
+          collapsed ? "md:w-20" : "md:w-64"
         )}
       >
         {/* Header */}
         <div className={cn(
           "flex items-center border-b border-white/5 min-h-[80px] py-6 transition-all duration-300",
-          collapsed ? "justify-center px-4" : "justify-between px-6"
+          collapsed ? "md:justify-center md:px-4" : "justify-between px-6"
         )}>
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/5 shadow-lg shadow-black/20 shrink-0 border border-white/10">
               <img src="/logo.png" alt="PIXORA" className="h-full w-full object-contain p-1" />
             </div>
             
+            {/* Brand text: always visible on mobile overlay, on md+ depends on collapsed */}
             <div
               className={cn(
-                "flex flex-col min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300",
-                collapsed ? "hidden" : "hidden lg:flex ml-3"
+                "flex flex-col min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 ml-3",
+                collapsed ? "md:hidden" : "md:flex"
               )}
             >
               <span className="text-xl font-black text-white tracking-tighter leading-none">PIXORA</span>
@@ -129,14 +136,16 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
           </div>
 
           <div className="flex items-center shrink-0">
+            {/* Close button: only on mobile overlay */}
             <button onClick={onClose} className="md:hidden p-2 rounded-full hover:bg-white/10 transition-colors">
               <X className="h-5 w-5 text-white" />
             </button>
             
+            {/* Collapse button: on md+ when expanded */}
             {!collapsed && (
               <button
                 onClick={onToggleCollapse}
-                className="hidden lg:flex p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                className="hidden md:flex p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                 title="Collapse sidebar"
               >
                 <ChevronsLeft className="h-4 w-4" />
@@ -145,9 +154,9 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
           </div>
         </div>
 
-        {/* If collapsed, show the expand toggle right below header or inline */}
+        {/* Expand toggle when collapsed: on md+ */}
         {collapsed && (
-          <div className="hidden lg:flex justify-center border-b border-white/5 pb-4 pt-2">
+          <div className="hidden md:flex justify-center border-b border-white/5 pb-4 pt-2">
             <button
               onClick={onToggleCollapse}
               className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
@@ -170,7 +179,12 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                 onClick={onClose}
                 className={cn(
                   "group relative flex items-center rounded-xl text-sm font-medium transition-all duration-300 overflow-hidden",
-                  collapsed ? "justify-center px-0 py-3" : "gap-3 px-4 py-3",
+                  // Mobile: always expanded
+                  "gap-3 px-4 py-3",
+                  // md+: depends on collapsed state
+                  collapsed
+                    ? "md:justify-center md:px-0 md:gap-0"
+                    : "md:gap-3 md:px-4",
                   active
                     ? "text-white shadow-lg shadow-primary/10"
                     : "text-slate-200 hover:text-white hover:bg-white/5"
@@ -183,18 +197,23 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                   active ? "text-white" : "text-slate-300 group-hover:text-white"
                 )} />
                 
+                {/* Label: always on mobile, on md+ depends on collapsed */}
                 <span
                   className={cn(
                     "truncate whitespace-nowrap overflow-hidden transition-all duration-300",
-                    collapsed ? "hidden" : "hidden lg:inline-block"
+                    collapsed ? "md:hidden" : "md:inline-block"
                   )}
                 >
                   {item.title}
                 </span>
 
-                {active && !collapsed && (
+                {/* Active dot */}
+                {active && (
                   <div 
-                    className="ml-auto h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white] shrink-0 transition-opacity duration-300" 
+                    className={cn(
+                      "ml-auto h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white] shrink-0 transition-opacity duration-300",
+                      collapsed ? "md:hidden" : "md:block"
+                    )}
                   />
                 )}
               </NavLink>
@@ -204,28 +223,33 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
 
         {/* Support Section */}
         <div className="p-4 mt-auto">
-          {collapsed ? (
+          {/* Collapsed icon-only support button */}
+          {collapsed && (
             <button 
-              className="w-full flex justify-center items-center p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+              className="hidden md:flex w-full justify-center items-center p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
               title="Contact Support"
               onClick={() => navigate("/client/help")}
             >
               <LifeBuoy className="h-5 w-5" />
             </button>
-          ) : (
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4 transition-opacity duration-300 animate-in fade-in slide-in-from-bottom-2">
-              <p className="text-xs font-semibold text-white mb-1">Need help?</p>
-              <p className="text-[10px] text-slate-300 mb-3 leading-relaxed">Contact your manager for any assistance.</p>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="w-full h-8 text-[11px] bg-primary/20 hover:bg-primary/30 text-white rounded-lg"
-                onClick={() => navigate("/client/help")}
-              >
-                Contact Support
-              </Button>
-            </div>
           )}
+
+          {/* Expanded support card: always on mobile, on md+ when not collapsed */}
+          <div className={cn(
+            "rounded-2xl bg-white/5 border border-white/10 p-4 transition-opacity duration-300 animate-in fade-in slide-in-from-bottom-2",
+            collapsed ? "md:hidden" : "md:block"
+          )}>
+            <p className="text-xs font-semibold text-white mb-1">Need help?</p>
+            <p className="text-[10px] text-slate-300 mb-3 leading-relaxed">Contact your manager for any assistance.</p>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="w-full h-8 text-[11px] bg-primary/20 hover:bg-primary/30 text-white rounded-lg"
+              onClick={() => navigate("/client/help")}
+            >
+              Contact Support
+            </Button>
+          </div>
         </div>
       </aside>
     </>

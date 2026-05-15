@@ -592,7 +592,7 @@ export default function WhatsAppPage() {
         className={cn(
           "flex-1 min-w-0 flex flex-col transition-all min-h-0",
           mainTab === "inbox"
-            ? "flex-1 min-h-0 -mx-4 md:mx-0 -mb-4 md:mb-0 overflow-hidden"
+            ? "flex-1 min-h-0 overflow-hidden"
             : "h-auto space-y-4 md:space-y-6",
         )}
       >

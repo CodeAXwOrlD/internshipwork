@@ -718,11 +718,11 @@ export default function WhatsAppInbox({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="relative group mx-2">
+                  <div className="relative group flex-1 min-w-0 ml-3">
                     <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-all group-focus-within:text-blue-600" />
                     <Input
                       placeholder="Search conversations..."
-                      className="h-9 border-slate-200 bg-slate-50 pl-9 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all text-xs font-semibold"
+                      className="h-9 w-full border-slate-200 bg-slate-50 pl-9 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all text-xs font-semibold"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -1045,7 +1045,7 @@ export default function WhatsAppInbox({
                   </div>
 
                   {/* Message input – fixed at bottom, never scrolls */}
-                  <div className="flex-shrink-0 border-t border-slate-200/60 bg-white/95 p-2 md:p-3 backdrop-blur-md">
+                  <div className="flex-shrink-0 border-t border-slate-200/60 bg-white/95 px-2 py-2 md:px-3 md:py-3 backdrop-blur-md w-full">
                     <input
                       type="file"
                       className="hidden"
@@ -1069,7 +1069,7 @@ export default function WhatsAppInbox({
                       onChange={handleFileChange}
                     />
 
-                    <div className="flex items-center gap-1 rounded-3xl border border-slate-200 bg-white px-2 py-1.5 shadow-md">
+                    <div className="flex items-center gap-0.5 md:gap-1 rounded-2xl md:rounded-3xl border border-slate-200 bg-white px-1 py-1 md:px-2 md:py-1.5 shadow-sm md:shadow-md w-full min-w-0">
                       {/* Emoji */}
                       <Popover>
                         <PopoverTrigger asChild>

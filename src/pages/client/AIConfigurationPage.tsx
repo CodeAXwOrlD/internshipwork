@@ -52,6 +52,36 @@ export default function AIConfigurationPage() {
   const [newAnswer, setNewAnswer] = useState("");
   const [isAddingFaq, setIsAddingFaq] = useState(false);
   const [activeTab, setActiveTab] = useState("brain");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFaqId, setSelectedFaqId] = useState<string | null>(null);
+
+  // UI-only template presets (no backend changes)
+  const templates = [
+    {
+      id: "default",
+      name: "Default Assistant",
+      description: "Neutral, helpful and concise assistant for general queries.",
+      prompt:
+        "You are a helpful and professional assistant for PIXORA. Provide concise and friendly answers about services and pricing.",
+      temp: 0.6,
+    },
+    {
+      id: "sales",
+      name: "Sales Assistant",
+      description: "Proactive, persuasive and lead-focused persona.",
+      prompt:
+        "You are a friendly sales assistant. Ask clarifying questions and nudge visitors towards pricing and trial information.",
+      temp: 0.6,
+    },
+    {
+      id: "support",
+      name: "Support Agent",
+      description: "Calm, procedural and troubleshooting-focused persona.",
+      prompt:
+        "You are a calm technical support assistant. Provide step-by-step guidance, ask diagnostic questions and escalate when needed.",
+      temp: 0.2,
+    },
+  ];
 
   useEffect(() => {
     fetchChatbotConfig();
@@ -168,6 +198,7 @@ export default function AIConfigurationPage() {
       .order("created_at", { ascending: false });
 
     setFaqs(knowledgeDocs || []);
+    if (knowledgeDocs && knowledgeDocs.length > 0) setSelectedFaqId(knowledgeDocs[0].id);
   };
 
   const handleSave = async () => {
@@ -239,11 +270,24 @@ export default function AIConfigurationPage() {
       if (error) throw error;
 
       setFaqs((prev) => prev.filter((item) => item.id !== id));
+      if (selectedFaqId === id) setSelectedFaqId(null);
       toast.success("Knowledge snippet removed.");
     } catch (err) {
       toast.error("Failed to delete item.");
     }
   };
+
+  // Derived UI helpers
+  const filteredFaqs = faqs.filter((f) => {
+    try {
+      const q = f.content.split("\nA: ")[0].replace("Q: ", "").toLowerCase();
+      return q.includes(searchQuery.toLowerCase());
+    } catch {
+      return true;
+    }
+  });
+
+  const selectedFaq = faqs.find((f) => f.id === selectedFaqId) || null;
 
   if (isLoading) {
     return (
@@ -312,13 +356,84 @@ export default function AIConfigurationPage() {
         {/* AI Brain Tab */}
         {activeTab === "brain" && (
           <TabsContent value="brain" key="brain" forceMount>
-            <div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="grid gap-6 md:grid-cols-2"
-            >
-              <Card className="bg-white/95 border-primary/20 shadow-xl shadow-primary/5 rounded-3xl overflow-hidden md:col-span-2">
+              <div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="grid gap-6 md:grid-cols-3"
+              >
+                {/* Templates column */}
+                <div className="space-y-4">
+                  <Card className="bg-white/95 border-primary/10 shadow-sm rounded-2xl overflow-hidden">
+                    <CardHeader className="p-4 border-b">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" /> Templates
+                      </CardTitle>
+                      <CardDescription className="text-xs text-slate-500">
+                        Pick a starting personality for your assistant.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-3 space-y-3">
+                      {templates.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => {
+                            setSystemPrompt(t.prompt);
+                            setTemperature(t.temp);
+                          }}
+                          className={`w-full text-left p-3 rounded-lg transition-shadow border ${
+                            systemPrompt === t.prompt
+                              ? "border-primary bg-primary/5 shadow"
+                              : "border-slate-100 bg-white/50 hover:border-primary/20"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-semibold text-slate-800">{t.name}</div>
+                              <div className="text-xs text-slate-500">{t.description}</div>
+                            </div>
+                            <div className="text-[11px] text-slate-400">Temp {t.temp}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white/95 border-primary/10 shadow-sm rounded-2xl overflow-hidden">
+                    <CardHeader className="p-4 border-b">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2">
+                        <Settings2 className="w-4 h-4 text-primary" /> Utilities
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 space-y-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(systemPrompt || "");
+                          toast.success("System prompt copied to clipboard");
+                        }}
+                      >
+                        Copy Prompt
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          setSystemPrompt("");
+                          setTemperature(0.7);
+                          toast.success("Reset to defaults (UI only)");
+                        }}
+                      >
+                        Reset UI
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="bg-white/95 border-primary/20 shadow-xl shadow-primary/5 rounded-3xl overflow-hidden md:col-span-2">
                 <CardHeader className="border-b border-sidebar-border/5 pb-6">
                   <CardTitle className="text-xl font-bold flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-primary" />
@@ -497,11 +612,7 @@ export default function AIConfigurationPage() {
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
                   {isAddingFaq && (
-                    <div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3 mb-4"
-                    >
+                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3 mb-4">
                       <Label className="text-[10px] font-bold text-slate-500 uppercase">
                         Question
                       </Label>
@@ -531,42 +642,87 @@ export default function AIConfigurationPage() {
                     </div>
                   )}
 
-                  {faqs.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-400">
-                      No FAQ snippets added yet. Type one above to train your
-                      AI.
-                    </div>
-                  ) : (
-                    faqs.map((q, idx) => {
-                      const lines = q.content.split("\nA: ");
-                      const question = lines[0].replace("Q: ", "");
-                      const answer = lines[1] || "";
+                  <div className="mb-4">
+                    <Input
+                      placeholder="Search FAQs..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="rounded-full bg-slate-50"
+                    />
+                  </div>
 
-                      return (
-                        <div
-                          key={q.id}
-                          className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 space-y-2 group transition-colors hover:border-primary/20"
-                        >
-                          <div className="flex justify-between items-start">
-                            <p className="text-sm font-bold text-slate-700">
-                              Q: {question}
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-slate-400 hover:text-red-500"
-                              onClick={() => handleDeleteKnowledge(q.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <p className="text-xs text-slate-500 leading-relaxed italic">
-                            {answer}
-                          </p>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2 md:col-span-1">
+                      {filteredFaqs.length === 0 ? (
+                        <div className="text-xs text-slate-400 p-6 text-center rounded-2xl border border-slate-100">
+                          No matching FAQs. Add one to get started.
                         </div>
-                      );
-                    })
-                  )}
+                      ) : (
+                        filteredFaqs.map((q) => {
+                          const lines = q.content.split("\nA: ");
+                          const question = lines[0].replace("Q: ", "");
+                          return (
+                            <button
+                              key={q.id}
+                              onClick={() => setSelectedFaqId(q.id)}
+                              className={`w-full text-left p-3 rounded-lg transition-colors border ${
+                                selectedFaqId === q.id
+                                  ? 'border-primary bg-primary/5 shadow'
+                                  : 'border-slate-100 bg-white/50 hover:border-primary/20'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm font-semibold text-slate-800">{question}</div>
+                                <div className="text-[11px] text-slate-400">View</div>
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="md:col-span-2 p-4 rounded-2xl bg-slate-50 border border-slate-100 min-h-[160px]">
+                      {selectedFaq ? (
+                        (() => {
+                          const lines = selectedFaq.content.split("\nA: ");
+                          const question = lines[0].replace("Q: ", "");
+                          const answer = lines[1] || "";
+                          return (
+                            <div className="space-y-4">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="text-sm font-bold text-slate-700">Q: {question}</div>
+                                  <div className="text-xs text-slate-500 mt-1 italic">Preview</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(answer || "");
+                                      toast.success('Answer copied');
+                                    }}
+                                  >
+                                    Copy Answer
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => selectedFaq && handleDeleteKnowledge(selectedFaq.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{answer}</div>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <div className="text-center text-slate-400">Select an FAQ to preview its content.</div>
+                      )}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>

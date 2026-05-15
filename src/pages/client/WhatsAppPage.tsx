@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -528,13 +528,31 @@ export default function WhatsAppPage() {
     };
   }, [client, fetchCampaigns, fetchStats]);
 
-  const [mainTab, setMainTab] = useState(() => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const mainTab = useMemo(() => {
+    const urlTab = searchParams.get("tab");
+    if (urlTab && ["overview", "inbox", "template", "ai-settings"].includes(urlTab)) {
+      return urlTab;
+    }
     return localStorage.getItem("leadnest_active_tab") || "overview";
-  });
+  }, [searchParams]);
 
   useEffect(() => {
     localStorage.setItem("leadnest_active_tab", mainTab);
-  }, [mainTab]);
+    const urlTab = searchParams.get("tab");
+    if (urlTab !== mainTab) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set("tab", mainTab);
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [mainTab, searchParams, setSearchParams]);
+
+  const handleTabChange = useCallback((tab: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("tab", tab);
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -568,29 +586,6 @@ export default function WhatsAppPage() {
 
   return (
     <div ref={inboxContainerRef} className="flex flex-col md:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden flex-1 min-h-0">
-      <div className="w-full md:w-44 md:shrink-0">
-        <div className="flex flex-row md:flex-col gap-1 sticky top-0 md:top-6 overflow-x-auto md:overflow-x-visible no-scrollbar pb-2 md:pb-0 scrollbar-hide">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = mainTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setMainTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all duration-150 text-left whitespace-nowrap md:whitespace-normal",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div
         className={cn(
@@ -700,6 +695,7 @@ export default function WhatsAppPage() {
         <AnimatePresence mode="wait">
           {mainTab === "overview" && (
             <motion.div
+              key="overview"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
@@ -756,13 +752,13 @@ export default function WhatsAppPage() {
                   icon={<FileText className="h-5 w-5" />}
                   label="Message Templates"
                   sub="Pre-approved templates"
-                  onClick={() => setMainTab("template")}
+                  onClick={() => handleTabChange("template")}
                 />
                 <QuickAction
                   icon={<MessageSquare className="h-5 w-5" />}
                   label="Live Chat Inbox"
                   sub="Real-time messaging"
-                  onClick={() => setMainTab("inbox")}
+                  onClick={() => handleTabChange("inbox")}
                 />
               </div>
 
@@ -963,6 +959,7 @@ export default function WhatsAppPage() {
 
           {mainTab === "inbox" && (
             <motion.div
+              key="inbox"
               className="flex-1 min-h-0 flex flex-col min-w-0 overflow-hidden w-full"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -978,6 +975,7 @@ export default function WhatsAppPage() {
 
           {mainTab === "template" && (
             <motion.div
+              key="template"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
@@ -1144,6 +1142,7 @@ export default function WhatsAppPage() {
 
           {mainTab === "ai-settings" && (
             <motion.div
+              key="ai-settings"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
@@ -2716,7 +2715,7 @@ function ViewTemplateModalWA({ open, onOpenChange, template }: any) {
 
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Message Preview</p>
-            
+
             <div className="max-w-sm mx-auto bg-[#E4EFE7] p-4 rounded-3xl shadow-inner relative overflow-hidden">
               <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2 relative z-10">
                 {headerComponent && (

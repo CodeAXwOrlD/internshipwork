@@ -21,6 +21,8 @@ import { useClient } from "@/contexts/ClientContext";
 import { getServicePath, getServiceIcon, getServiceLabel } from "@/lib/service-routes";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { ChevronDown, FileText, BotIcon } from "lucide-react";
 
 interface ClientSidebarProps {
   open: boolean;
@@ -40,9 +42,24 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
       const Icon = getServiceIcon(slug);
       const label = getServiceLabel(slug) || svc.service_name;
       if (!Icon) return null;
+      
+      if (slug === "whatsapp-automation" || slug === "whatsapp") {
+        return { 
+          title: label, 
+          icon: Icon, 
+          path: getServicePath(slug),
+          subItems: [
+            { title: "Overview", icon: BarChart3, path: `${getServicePath(slug)}?tab=overview` },
+            { title: "Inbox", icon: MessageSquare, path: `${getServicePath(slug)}?tab=inbox` },
+            { title: "Template", icon: FileText, path: `${getServicePath(slug)}?tab=template` },
+            { title: "AI Settings", icon: BotIcon, path: `${getServicePath(slug)}?tab=ai-settings` },
+          ]
+        };
+      }
+      
       return { title: label, icon: Icon, path: getServicePath(slug) };
     })
-    .filter(Boolean) as { title: string; icon: React.ElementType; path: string }[];
+    .filter(Boolean) as { title: string; icon: React.ElementType; path: string; subItems?: any[] }[];
 
   const leadsNavItem = { title: "Leads", icon: Users, path: "/client/leads" };
   const socialMediaIdx = serviceNavItems.findIndex(item => item.path === "/client/social-media");
@@ -86,6 +103,14 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
   // On mobile (<md), the overlay is always expanded when open.
   // On md+, it depends on the collapsed state.
   const isExpanded = !collapsed;
+
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    "LeadNest": true, // Default open
+  });
+
+  const toggleMenu = (title: string) => {
+    setOpenMenus(prev => ({ ...prev, [title]: !prev[title] }));
+  };
 
   return (
     <>
@@ -171,52 +196,103 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
         <nav className="flex-1 overflow-y-auto py-4 space-y-1 custom-scrollbar px-4">
           {allNavItems.map((item) => {
             const active = isActive(item.path);
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === "/client"}
-                onClick={onClose}
-                className={cn(
-                  "group relative flex items-center rounded-xl text-sm font-medium transition-all duration-300 overflow-hidden",
-                  // Mobile: always expanded
-                  "gap-3 px-4 py-3",
-                  // md+: depends on collapsed state
-                  collapsed
-                    ? "md:justify-center md:px-0 md:gap-0"
-                    : "md:gap-3 md:px-4",
-                  active
-                    ? "text-white shadow-lg shadow-primary/10"
-                    : "text-slate-200 hover:text-white hover:bg-white/5"
-                )}
-                style={active ? { backgroundColor: primaryColor || "#304f9f" } : undefined}
-                title={collapsed ? item.title : undefined}
-              >
-                <item.icon className={cn(
-                  "h-5 w-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
-                  active ? "text-white" : "text-slate-300 group-hover:text-white"
-                )} />
-                
-                {/* Label: always on mobile, on md+ depends on collapsed */}
-                <span
-                  className={cn(
-                    "truncate whitespace-nowrap overflow-hidden transition-all duration-300",
-                    collapsed ? "md:hidden" : "md:inline-block"
-                  )}
-                >
-                  {item.title}
-                </span>
+            const hasSubItems = item.subItems && item.subItems.length > 0;
+            const isMenuOpen = openMenus[item.title];
 
-                {/* Active dot */}
-                {active && (
-                  <div 
+            return (
+              <div key={item.path} className="flex flex-col">
+                <NavLink
+                  to={hasSubItems ? (item.subItems[0]?.path || `${item.path}?tab=overview`) : item.path}
+                  end={item.path === "/client"}
+                  onClick={() => {
+                    if (hasSubItems) {
+                      toggleMenu(item.title);
+                    } else {
+                      onClose();
+                    }
+                  }}
+                  className={cn(
+                    "group relative flex items-center rounded-xl text-sm font-medium transition-all duration-300 overflow-hidden",
+                    // Mobile: always expanded
+                    "gap-3 px-4 py-3",
+                    // md+: depends on collapsed state
+                    collapsed
+                      ? "md:justify-center md:px-0 md:gap-0"
+                      : "md:gap-3 md:px-4",
+                    active && !hasSubItems
+                      ? "text-white shadow-lg shadow-primary/10"
+                      : "text-slate-200 hover:text-white hover:bg-white/5"
+                  )}
+                  style={active && !hasSubItems ? { backgroundColor: primaryColor || "#304f9f" } : undefined}
+                  title={collapsed ? item.title : undefined}
+                >
+                  <item.icon className={cn(
+                    "h-5 w-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
+                    active && !hasSubItems ? "text-white" : "text-slate-300 group-hover:text-white"
+                  )} />
+                  
+                  {/* Label: always on mobile, on md+ depends on collapsed */}
+                  <span
                     className={cn(
-                      "ml-auto h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white] shrink-0 transition-opacity duration-300",
-                      collapsed ? "md:hidden" : "md:block"
+                      "truncate whitespace-nowrap overflow-hidden transition-all duration-300",
+                      collapsed ? "md:hidden" : "md:inline-block",
+                      "flex-1"
                     )}
-                  />
-                )}
-              </NavLink>
+                  >
+                    {item.title}
+                  </span>
+
+                  {/* Active dot / Chevron */}
+                  {hasSubItems && !collapsed && (
+                    <ChevronDown className={cn(
+                      "h-4 w-4 shrink-0 transition-transform duration-200 text-slate-400 group-hover:text-white",
+                      isMenuOpen && "rotate-180"
+                    )} />
+                  )}
+                  {active && !hasSubItems && (
+                    <div 
+                      className={cn(
+                        "ml-auto h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white] shrink-0 transition-opacity duration-300",
+                        collapsed ? "md:hidden" : "md:block"
+                      )}
+                    />
+                  )}
+                </NavLink>
+
+                {/* Submenu */}
+                <AnimatePresence>
+                  {hasSubItems && isMenuOpen && !collapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex flex-col ml-11 mt-1 space-y-1 overflow-hidden"
+                    >
+                      {item.subItems!.map((subItem) => {
+                        const searchParamTab = new URLSearchParams(location.search).get('tab');
+                        const subActive = searchParamTab ? subItem.path.includes(`tab=${searchParamTab}`) : subItem.path.includes('tab=overview');
+                        
+                        return (
+                          <NavLink
+                            key={subItem.path}
+                            to={subItem.path}
+                            onClick={onClose}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200",
+                              subActive 
+                                ? "text-white bg-white/10 shadow-sm" 
+                                : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                            )}
+                          >
+                            {subItem.icon && <subItem.icon className="h-4 w-4 shrink-0" />}
+                            <span className="truncate">{subItem.title}</span>
+                          </NavLink>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             );
           })}
         </nav>

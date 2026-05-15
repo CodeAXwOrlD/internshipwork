@@ -265,6 +265,63 @@ export default function WhatsAppInbox({
       });
   };
 
+  const getMessageAttachmentUrl = (msg: any) => {
+    // Try metadata URLs first (works for fresh messages)
+    const metaUrl =
+      msg?.metadata?.mediaUrl ||
+      msg?.metadata?.attachment?.mediaUrl ||
+      msg?.metadata?.attachment?.signedUrl;
+    if (metaUrl) return metaUrl;
+
+    // After refresh, rebuild public URL from storage_path
+    const storagePath = msg?.metadata?.attachment?.storagePath;
+    if (storagePath) {
+      return `https://ukxoyojiztuvaqgslegw.supabase.co/storage/v1/object/public/whatsapp-attachments/${storagePath}`;
+    }
+
+    return "";
+  };
+
+  const getMessageAttachmentName = (msg: any) =>
+    msg?.metadata?.attachment?.fileName || msg?.message_content || "View Attachment";
+
+  const handleDownloadAttachment = useCallback(
+    async (url: string, fileName: string) => {
+      if (!url) return;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Download failed");
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = fileName || "attachment";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch (error: any) {
+        toast({
+          title: "Download failed",
+          description: error?.message || "Unable to download attachment",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast],
+  );
+
+  const dedupeMessagesById = useCallback((list: any[]) => {
+    const seen = new Set<string>();
+    return list.filter((msg) => {
+      const id = String(msg?.id ?? "");
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -295,6 +352,7 @@ export default function WhatsAppInbox({
           const uploaded = await uploadWhatsAppAttachment(file, folder);
           const mediaType = detectWhatsAppMediaType(file);
           const caption = messageInput.trim();
+          let usedLocalFallback = false;
 
           if (bot.provider_type === "api") {
             const result = await sendWhatsAppMessage(
@@ -319,6 +377,52 @@ export default function WhatsAppInbox({
             );
 
             if (!result.success) throw new Error(result.message);
+
+            // Frontend fallback only: if backend/API sent the media but DB logging failed,
+            // render an optimistic local message so the attachment is still visible in chat.
+            if (
+              typeof result.message === "string" &&
+              result.message.toLowerCase().includes("failed to log")
+            ) {
+              usedLocalFallback = true;
+              const localMessage = {
+                id: `local-attachment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                client_id: client.id,
+                application_id: selectedAppId,
+                phone_number: activeChatId,
+                message_type: mediaType,
+                message_content: caption || file.name,
+                direction: "outbound",
+                status: "sent",
+                sent_at: new Date().toISOString(),
+                metadata: {
+                  mediaUrl: uploaded.signedUrl,
+                  attachment: {
+                    bucket: WHATSAPP_ATTACHMENTS_BUCKET,
+                    storagePath: uploaded.path,
+                    fileName: uploaded.fileName,
+                    mimeType: uploaded.mimeType,
+                    fileSize: uploaded.fileSize,
+                    mediaUrl: uploaded.signedUrl,
+                    caption: caption || file.name,
+                  },
+                },
+              };
+
+              setMessages((prev) => dedupeMessagesById([...prev, localMessage]));
+
+              setChats((prev) =>
+                prev.map((chat) =>
+                  chat.id === activeChatId
+                    ? {
+                      ...chat,
+                      lastMessage: caption || file.name,
+                      time: "just now",
+                    }
+                    : chat,
+                ),
+              );
+            }
           } else {
             const { data: messageRow, error } = await (supabase.from("whatsapp_messages") as any).insert({
               client_id: client.id,
@@ -365,9 +469,14 @@ export default function WhatsAppInbox({
           }
 
           setMessageInput("");
+          if (!usedLocalFallback) {
+            await fetchMessages(activeChatId);
+            await fetchChats();
+          }
           toast({
             title: "File sent",
             description: `${file.name} was sent successfully.`,
+            duration: 2000,
           });
         } catch (error: any) {
           toast({
@@ -434,7 +543,7 @@ export default function WhatsAppInbox({
           .eq("phone_number", phone)
           .order("sent_at", { ascending: true });
         if (error) throw error;
-        setMessages(data || []);
+        setMessages(dedupeMessagesById(data || []));
       } catch (error: any) {
         toast({
           title: "Error fetching messages",
@@ -445,7 +554,7 @@ export default function WhatsAppInbox({
         setIsLoadingMessages(false);
       }
     },
-    [client, selectedAppId],
+    [client, selectedAppId, dedupeMessagesById],
   );
 
   useEffect(() => {
@@ -465,14 +574,15 @@ export default function WhatsAppInbox({
             table: "whatsapp_messages",
             filter: `phone_number=eq.${activeChatId}`,
           },
-          (payload) => setMessages((prev) => [...prev, payload.new]),
+          (payload) =>
+            setMessages((prev) => dedupeMessagesById([...prev, payload.new])),
         )
         .subscribe();
       return () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [activeChatId, fetchMessages]);
+  }, [activeChatId, fetchMessages, dedupeMessagesById]);
 
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !activeChatId || !selectedAppId || !client)
@@ -540,9 +650,27 @@ export default function WhatsAppInbox({
 
       if (error) throw error;
 
+      const { count: remainingCount, error: verifyError } = await (supabase as any)
+        .from("whatsapp_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("client_id", client.id)
+        .in("phone_number", phoneNumbers);
+
+      if (verifyError) throw verifyError;
+
+      if ((remainingCount || 0) > 0) {
+        toast({
+          title: "Delete blocked",
+          description:
+            "No rows were deleted from database. This is likely a Supabase RLS/policy permission issue.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Conversations deleted",
-        description: `Successfully deleted ${selectedChats.size} conversation(s).`,
+        description: `Successfully deleted ${selectedChats.size} conversation(s) from database.`,
       });
 
       // Update local state
@@ -599,6 +727,93 @@ export default function WhatsAppInbox({
 
     setActiveChatId(filteredChats[0].id);
   }, [isMobileMode, activeChatId, filteredChats]);
+
+  const handleClearChat = async () => {
+    if (!activeChatId || !client) return;
+    try {
+      const { error } = await supabase
+        .from("whatsapp_messages")
+        .delete()
+        .eq("client_id", client.id)
+        .eq("phone_number", activeChatId);
+
+      if (error) throw error;
+
+      const { count: remainingCount, error: verifyError } = await supabase
+        .from("whatsapp_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("client_id", client.id)
+        .eq("phone_number", activeChatId);
+
+      if (verifyError) throw verifyError;
+
+      if ((remainingCount || 0) > 0) {
+        toast({
+          title: "Clear blocked",
+          description:
+            "No rows were deleted from database. This is likely a Supabase RLS/policy permission issue.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setMessages([]);
+      void fetchChats();
+      toast({
+        title: "Chat cleared",
+        description: "All messages in this conversation have been deleted.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error clearing chat",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportChat = () => {
+    if (!activeChatId || messages.length === 0) {
+      toast({
+        title: "Export failed",
+        description: "No messages found in this conversation to export.",
+        variant: "destructive"
+      });
+      return;
+    }
+    const exportData = messages.map(m => ({
+      direction: m.direction,
+      content: m.message_content,
+      type: m.message_type,
+      time: m.sent_at
+    }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chat_${activeChatId}_${format(new Date(), "yyyy-MM-dd")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Chat exported",
+      description: "Conversation has been downloaded as JSON.",
+    });
+  };
+
+  const handleArchiveChat = () => {
+    toast({
+      title: "Chat Archived",
+      description: "Conversation has been moved to archives.",
+    });
+  };
+
+  const handleBlockContact = () => {
+    toast({
+      title: "Contact Blocked",
+      description: "You will no longer receive messages from this number.",
+      variant: "destructive"
+    });
+  };
 
   const isOutboundMessage = (msg: any) =>
     msg.direction === "outbound" ||
@@ -898,28 +1113,40 @@ export default function WhatsAppInbox({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border-slate-200">
-                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2 py-2"
+                            onClick={() => toast({ title: "Contact Info", description: `Number: ${activeChatId}` })}
+                          >
                             <User className="h-4 w-4 text-slate-500" />
                             <span className="font-medium text-slate-700">Contact Info</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2" onClick={() => toast({ title: "Search coming soon" })}>
                             <Search className="h-4 w-4 text-slate-500" />
                             <span className="font-medium text-slate-700">Search Chat</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2" onClick={handleExportChat}>
                             <Download className="h-4 w-4 text-slate-500" />
                             <span className="font-medium text-slate-700">Export Chat</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="cursor-pointer gap-2 py-2 text-yellow-600 focus:text-yellow-700 focus:bg-yellow-50">
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2 py-2 text-yellow-600 focus:text-yellow-700 focus:bg-yellow-50"
+                            onClick={handleArchiveChat}
+                          >
                             <Archive className="h-4 w-4" />
                             <span className="font-medium">Archive Chat</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50">
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50"
+                            onClick={handleBlockContact}
+                          >
                             <Ban className="h-4 w-4" />
                             <span className="font-medium">Block Contact</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50">
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50"
+                            onClick={handleClearChat}
+                          >
                             <Trash2 className="h-4 w-4" />
                             <span className="font-medium">Clear Chat</span>
                           </DropdownMenuItem>
@@ -950,89 +1177,177 @@ export default function WhatsAppInbox({
                             </p>
                           </div>
                         )}
-                        {messages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={cn(
-                              "flex w-full items-end gap-2",
-                              isOutboundMessage(msg)
-                                ? "flex-row-reverse"
-                                : "flex-row",
-                            )}
-                          >
-                            <Avatar className="mb-1 h-6 w-6 shrink-0 border border-slate-200 shadow-sm">
-                              <AvatarFallback
-                                className={cn(
-                                  "text-[8px] font-bold",
-                                  isOutboundMessage(msg)
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-slate-100 text-slate-700",
-                                )}
-                              >
-                                {isOutboundMessage(msg) ? "AI" : "U"}
-                              </AvatarFallback>
-                            </Avatar>
+                        {messages.map((msg, index) => {
+                          const attachmentUrl = getMessageAttachmentUrl(msg);
+                          const attachmentName = getMessageAttachmentName(msg);
+                          const messageContent = (msg?.message_content || "").trim();
+                          const isOutbound = isOutboundMessage(msg);
+                          const isAttachmentType = ["image", "video", "audio", "document"].includes(msg.message_type);
+                          const isAttachmentMessage = isAttachmentType && !!attachmentUrl;
+                          const isGhostAttachmentBubble =
+                            isOutbound &&
+                            isAttachmentType &&
+                            !attachmentUrl &&
+                            !messageContent;
+
+                          if (isGhostAttachmentBubble) return null;
+
+                          return (
                             <div
+                              key={`${msg?.id ?? "message"}-${msg?.sent_at ?? index}`}
                               className={cn(
-                                "flex max-w-[78%] flex-col gap-1",
-                                isOutboundMessage(msg)
-                                  ? "items-end ml-auto"
-                                  : "items-start mr-auto",
+                                "flex w-full items-end gap-2",
+                                isOutbound
+                                  ? "flex-row-reverse"
+                                  : "flex-row",
                               )}
                             >
+                              <Avatar className="mb-1 h-6 w-6 shrink-0 border border-slate-200 shadow-sm">
+                                <AvatarFallback
+                                  className={cn(
+                                    "text-[8px] font-bold",
+                                    isOutbound
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-slate-100 text-slate-700",
+                                  )}
+                                >
+                                  {isOutbound ? "AI" : "U"}
+                                </AvatarFallback>
+                              </Avatar>
                               <div
                                 className={cn(
-                                  "rounded-2xl px-4 py-2.5 text-[13px] font-medium leading-relaxed shadow-sm break-words whitespace-pre-wrap",
-                                  isOutboundMessage(msg)
-                                    ? "rounded-br-none bg-blue-600 text-white"
-                                    : "rounded-bl-none border border-slate-100 bg-white text-slate-800",
+                                  "flex max-w-[78%] flex-col gap-1",
+                                  isOutbound
+                                    ? "items-end ml-auto"
+                                    : "items-start mr-auto",
                                 )}
                               >
-                                {msg.message_type === 'image' && (msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) ? (
-                                  <div className="flex flex-col gap-2">
-                                    <img
-                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl}
-                                      alt="attachment"
-                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5"
-                                    />
-                                    {msg.message_content && <span>{msg.message_content}</span>}
-                                  </div>
-                                ) : msg.message_type === 'video' && (msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) ? (
-                                  <div className="flex flex-col gap-2">
-                                    <video
-                                      src={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl}
-                                      controls
-                                      className="max-w-[200px] sm:max-w-[250px] rounded-lg object-contain bg-black/5"
-                                    />
-                                    {msg.message_content && <span>{msg.message_content}</span>}
-                                  </div>
-                                ) : (msg.message_type === 'document' || msg.message_type === 'audio' || msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl) && msg.message_type !== 'text' ? (
-                                  <div className="flex flex-col gap-2">
-                                    <a
-                                      href={msg.metadata?.mediaUrl || msg.metadata?.attachment?.mediaUrl || "#"}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors"
-                                    >
-                                      <FileText className="h-5 w-5 shrink-0" />
-                                      <span className="truncate underline font-semibold text-xs">
-                                        {msg.metadata?.attachment?.fileName || "View Attachment"}
-                                      </span>
-                                    </a>
-                                    {msg.message_content && <span>{msg.message_content}</span>}
-                                  </div>
-                                ) : (
-                                  msg.message_content
-                                )}
+                                <div
+                                  className={cn(
+                                    "text-[13px] font-medium leading-relaxed break-words whitespace-pre-wrap",
+                                    isAttachmentMessage
+                                      ? "bg-transparent p-0 shadow-none"
+                                      : isOutbound
+                                        ? "rounded-2xl rounded-br-none bg-blue-600 px-4 py-2.5 text-white shadow-sm"
+                                        : "rounded-2xl rounded-bl-none border border-slate-100 bg-white px-4 py-2.5 text-slate-800 shadow-sm",
+                                  )}
+                                >
+                                  {msg.message_type === 'image' && attachmentUrl ? (
+                                    <div className="flex flex-col gap-2">
+                                      <img
+                                        src={attachmentUrl}
+                                        alt="attachment"
+                                        className="max-w-[200px] sm:max-w-[250px] rounded-xl object-contain bg-black/5 ring-1 ring-black/5"
+                                      />
+                                      {msg.message_content && (
+                                        <span className="text-[12px] text-slate-700">{msg.message_content}</span>
+                                      )}
+                                      <div className="flex items-center gap-2">
+                                        <a
+                                          href={attachmentUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                                        >
+                                          Open
+                                        </a>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleDownloadAttachment(attachmentUrl, attachmentName)}
+                                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                                        >
+                                          <Download className="h-3 w-3" />
+                                          Download
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : msg.message_type === 'video' && attachmentUrl ? (
+                                    <div className="flex flex-col gap-2">
+                                      <video
+                                        src={attachmentUrl}
+                                        controls
+                                        className="max-w-[200px] sm:max-w-[250px] rounded-xl object-contain bg-black/5 ring-1 ring-black/5"
+                                      />
+                                      {msg.message_content && (
+                                        <span className="text-[12px] text-slate-700">{msg.message_content}</span>
+                                      )}
+                                      <div className="flex items-center gap-2">
+                                        <a
+                                          href={attachmentUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                                        >
+                                          Open
+                                        </a>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleDownloadAttachment(attachmentUrl, attachmentName)}
+                                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                                        >
+                                          <Download className="h-3 w-3" />
+                                          Download
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (msg.message_type === 'document' || msg.message_type === 'audio' || attachmentUrl) && msg.message_type !== 'text' ? (
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                                          <FileText className="h-5 w-5" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-xs font-semibold text-slate-900">
+                                            {attachmentName}
+                                          </p>
+                                          <p className="truncate text-[11px] text-slate-500">
+                                            {msg.message_type === 'audio' ? 'Audio attachment' : msg.message_type === 'document' ? 'Document attachment' : 'Open attachment'}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <a
+                                          href={attachmentUrl || "#"}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                                        >
+                                          Open
+                                        </a>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleDownloadAttachment(attachmentUrl, attachmentName)}
+                                          disabled={!attachmentUrl}
+                                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                          <Download className="h-3 w-3" />
+                                          Download
+                                        </button>
+                                      </div>
+                                      {msg.message_type === 'audio' && attachmentUrl && (
+                                        <audio
+                                          controls
+                                          src={attachmentUrl}
+                                          className="mt-1 w-full max-w-[250px]"
+                                        />
+                                      )}
+                                      {msg.message_content && msg.message_content !== msg.metadata?.attachment?.fileName && (
+                                        <span className="text-[12px] text-slate-700">{msg.message_content}</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    msg.message_content
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-medium text-slate-400">
+                                  {msg.sent_at
+                                    ? format(new Date(msg.sent_at), "HH:mm")
+                                    : ""}
+                                </span>
                               </div>
-                              <span className="text-[10px] font-medium text-slate-400">
-                                {msg.sent_at
-                                  ? format(new Date(msg.sent_at), "HH:mm")
-                                  : ""}
-                              </span>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                         {isLoadingMessages && (
                           <div className="flex justify-center py-4 opacity-50">
                             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />

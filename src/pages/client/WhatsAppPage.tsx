@@ -194,6 +194,8 @@ export default function WhatsAppPage() {
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<any | null>(null);
+  const [viewTemplateOpen, setViewTemplateOpen] = useState(false);
+  const [templateToView, setTemplateToView] = useState<any | null>(null);
 
   // Message Sending State
   const [phone, setPhone] = useState("");
@@ -420,10 +422,6 @@ export default function WhatsAppPage() {
 
   const fetchTemplates = useCallback(
     async (appId: string) => {
-      if (appId === "00000000-0000-0000-0000-000000000000") {
-        setTemplates([]);
-        return;
-      }
       try {
         setIsRefreshingTemplates(true);
         const bot = assignedBots.find((b) => b.id === appId);
@@ -1021,8 +1019,7 @@ export default function WhatsAppPage() {
                     size="sm"
                     className="font-bold text-xs h-8 md:h-9 px-2 md:px-3"
                     onClick={() => setTemplateModalOpen(true)}
-                    disabled={!selectedAppId || selectedAppId === "00000000-0000-0000-0000-000000000000"}
-                  >
+                    disabled={!selectedAppId || assignedBots.length === 0}>
                     <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2" />
                     <span>Create Template</span>
                   </Button>
@@ -1091,18 +1088,32 @@ export default function WhatsAppPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => {
-                                  setTemplateToDelete(tpl);
-                                  setDeleteTemplateOpen(true);
-                                }}
-                                aria-label={`Delete template ${tpl.name}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  onClick={() => {
+                                    setTemplateToView(tpl);
+                                    setViewTemplateOpen(true);
+                                  }}
+                                  aria-label={`View template ${tpl.name}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => {
+                                    setTemplateToDelete(tpl);
+                                    setDeleteTemplateOpen(true);
+                                  }}
+                                  aria-label={`Delete template ${tpl.name}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -1183,6 +1194,15 @@ export default function WhatsAppPage() {
         cancelLabel="Keep it"
         variant="destructive"
         onConfirm={handleDeleteTemplate}
+      />
+
+      <ViewTemplateModalWA
+        open={viewTemplateOpen}
+        onOpenChange={(open) => {
+          setViewTemplateOpen(open);
+          if (!open) setTemplateToView(null);
+        }}
+        template={templateToView}
       />
 
       <CreateCampaignWizardWA
@@ -1753,140 +1773,312 @@ function SendMessageModal({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5 text-green-500" /> Send Message
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label>Bot</Label>
-            <Select value={selectedAppId || ""} onValueChange={onAppChange}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {assignedBots.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Phone</Label>
-            <Input
-              placeholder="+1234567890"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>Type</Label>
-            <Select value={messageType} onValueChange={setMessageType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">Text</SelectItem>
-                <SelectItem value="template">Template</SelectItem>
-                <SelectItem value="image">Image</SelectItem>
-                <SelectItem value="video">Video</SelectItem>
-                <SelectItem value="audio">Audio</SelectItem>
-                <SelectItem value="document">Document</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {(requiresMedia ||
-            ["image", "video", "audio", "document"].includes(messageType)) && (
-              <div>
-                <Label>{(headerFormat || messageType).toUpperCase()} URL</Label>
-                <Input
-                  placeholder="https://..."
-                  value={mediaUrl}
-                  onChange={(e) => setMediaUrl(e.target.value)}
-                />
+      <DialogContent className="w-[94vw] max-w-6xl overflow-hidden border-slate-200/70 bg-slate-50 p-0 shadow-2xl sm:w-[92vw] md:w-[90vw]">
+        <div className="max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 px-4 py-4 text-white sm:px-6 sm:py-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-emerald-100">
+                  <Send className="h-3.5 w-3.5" />
+                  Live preview
+                </div>
+                <DialogTitle className="text-2xl font-semibold tracking-tight text-white">
+                  Send Message
+                </DialogTitle>
+                <DialogDescription className="max-w-2xl text-sm text-slate-300">
+                  Compose and preview your message before sending it to your contact.
+                </DialogDescription>
               </div>
-            )}
-          {messageType === "template" && (
-            <div>
-              <Label>Template</Label>
-              <Select
-                value={templateName}
-                onValueChange={(val) => {
-                  setTemplateName(val);
-                  setVariables({});
-                  const tpl = templates.find(
-                    (t: any) => (t.name || t.template_name) === val,
-                  );
-                  if (tpl) {
-                    const body =
-                      tpl.components?.find((c: any) => c.type === "BODY")
-                        ?.text ||
-                      tpl.body ||
-                      "";
-                    setContent(body);
-                    setSelectedLanguage(
-                      tpl.language || tpl.language_code || "en_US",
-                    );
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((t: any, i: number) => (
-                    <SelectItem key={i} value={t.name || t.template_name}>
-                      {t.name || t.template_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+              <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-200 md:flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-200">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-medium text-white">Real-time preview</p>
+                  <p className="text-slate-300">See the message as it will appear.</p>
+                </div>
+              </div>
             </div>
-          )}
-          {messageType === "template" &&
-            detectedVariables.map((v: string, i: number) => (
-              <div key={i} className="flex items-center gap-2">
-                <Label className="w-12 text-right font-mono text-[10px]">
-                  {v}
+          </DialogHeader>
+
+          <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="min-w-0 space-y-5 border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:border-b-0 lg:border-r">
+              {/* Bot Selection */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Bot
+                </Label>
+                <Select value={selectedAppId || ""} onValueChange={onAppChange}>
+                  <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
+                    <SelectValue placeholder="Select bot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assignedBots.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Phone Number */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Phone Number
                 </Label>
                 <Input
-                  className="h-8 text-xs"
-                  placeholder={`Value for ${v}`}
-                  onChange={(e) =>
-                    setVariables((prev) => ({
-                      ...prev,
-                      [(v as string).replace(/[{}]/g, "")]: e.target.value,
-                    }))
-                  }
+                  placeholder="+1234567890"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-base shadow-sm transition-colors focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                />
+                <p className="text-xs leading-5 text-slate-500">
+                  Include country code (e.g., +91 for India). Minimum 11 digits required.
+                </p>
+              </div>
+
+              {/* Message Type */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Message Type
+                </Label>
+                <Select value={messageType} onValueChange={setMessageType}>
+                  <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="template">Template</SelectItem>
+                    <SelectItem value="image">Image</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="audio">Audio</SelectItem>
+                    <SelectItem value="document">Document</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Media URL (if needed) */}
+              {(requiresMedia ||
+                ["image", "video", "audio", "document"].includes(messageType)) && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {(headerFormat || messageType).toUpperCase()} URL
+                    </Label>
+                    <Input
+                      placeholder="https://example.com/media.jpg"
+                      value={mediaUrl}
+                      onChange={(e) => setMediaUrl(e.target.value)}
+                      className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-base shadow-sm transition-colors focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                )}
+
+              {/* Template Selection */}
+              {messageType === "template" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Template
+                  </Label>
+                  <Select
+                    value={templateName}
+                    onValueChange={(val) => {
+                      setTemplateName(val);
+                      setVariables({});
+                      const tpl = templates.find(
+                        (t: any) => (t.name || t.template_name) === val,
+                      );
+                      if (tpl) {
+                        const body =
+                          tpl.components?.find((c: any) => c.type === "BODY")
+                            ?.text ||
+                          tpl.body ||
+                          "";
+                        setContent(body);
+                        setSelectedLanguage(
+                          tpl.language || tpl.language_code || "en_US",
+                        );
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
+                      <SelectValue placeholder="Select template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((t: any, i: number) => (
+                        <SelectItem key={i} value={t.name || t.template_name}>
+                          {t.name || t.template_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Template Variables */}
+              {messageType === "template" && detectedVariables.length > 0 && (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Template Variables
+                  </Label>
+                  <div className="mt-3 space-y-2">
+                    {detectedVariables.map((v: string, i: number) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-xs font-mono font-semibold text-emerald-700">
+                          {v.replace(/[{}]/g, "")}
+                        </span>
+                        <Input
+                          placeholder={`Value for ${v}`}
+                          onChange={(e) =>
+                            setVariables((prev) => ({
+                              ...prev,
+                              [(v as string).replace(/[{}]/g, "")]: e.target.value,
+                            }))
+                          }
+                          className="h-9 rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Message Content */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Message
+                  </Label>
+                  <span className="text-xs text-slate-500">
+                    {content.length}/1024 characters
+                  </span>
+                </div>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  readOnly={messageType === "template"}
+                  rows={5}
+                  placeholder="Type your message here..."
+                  className="min-h-[140px] rounded-3xl border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-slate-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
                 />
               </div>
-            ))}
-          <div>
-            <Label>Message</Label>
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              readOnly={messageType === "template"}
-              className="text-xs"
-            />
+            </div>
+
+            {/* Preview Section */}
+            <div className="min-w-0 space-y-5 bg-slate-100 px-4 py-5 sm:px-6 sm:py-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Message preview</h3>
+                  <p className="text-sm text-slate-500">
+                    This is how it will appear in WhatsApp.
+                  </p>
+                </div>
+              </div>
+
+              {/* WhatsApp Message Preview */}
+              <div className="mx-auto w-full max-w-[22rem] overflow-x-auto rounded-[2rem] border border-slate-200 bg-slate-950 p-2.5 shadow-2xl sm:max-w-[24rem] lg:max-w-sm xl:max-w-md">
+                <div className="rounded-[1.65rem] bg-[#ECE5DD] p-3">
+                  <div className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-black/5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-sm font-semibold text-white shadow-md shadow-green-500/30">
+                        {(phone.slice(-2) || "WA").toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {phone.trim() || "+1234567890"}
+                        </p>
+                        <p className="text-xs text-slate-500">Now</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ml-auto w-full max-w-full rounded-[1.5rem] rounded-tr-md bg-white p-3.5 shadow-sm ring-1 ring-black/5 sm:p-4">
+                    <div className="break-words whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                      {messageType === "template" && previewContent.split(/(\{\{\d+\}\})/g).filter(Boolean).map((segment, index) =>
+                        /\{\{\d+\}\}/.test(segment) ? (
+                          <span
+                            key={`${segment}-${index}`}
+                            className="mx-0.5 inline-block max-w-full break-all rounded-md bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-amber-800 ring-1 ring-amber-200"
+                          >
+                            {segment}
+                          </span>
+                        ) : (
+                          <span key={`${segment}-${index}`} className="break-all">
+                            {segment}
+                          </span>
+                        ),
+                      )}
+                      {messageType !== "template" && (previewContent || "Your message will appear here...")}
+                    </div>
+
+                    {mediaUrl && (
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                          <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                          Media attachment
+                        </div>
+                        <p className="mt-2 break-all text-xs text-slate-600">
+                          {mediaUrl}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-100">
+                        {messageType.charAt(0).toUpperCase() + messageType.slice(1)}
+                      </Badge>
+                      {templateName && (
+                        <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
+                          {templateName}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-end text-[11px] text-slate-500">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 shadow-sm">
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                      Live sync enabled
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Personalization
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    Variables are highlighted so you can verify dynamic fields.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Ready to send
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    The preview shows exactly how it will appear in WhatsApp.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
+
+          <DialogFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-full px-5 sm:w-auto">
+              Cancel
+            </Button>
+            <Button
+              disabled={sending || !phone.trim()}
+              onClick={handleSend}
+              className="w-full rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-6 text-white shadow-lg shadow-emerald-500/25 transition-transform hover:scale-[1.01] hover:from-emerald-600 hover:to-green-700 sm:w-auto"
+            >
+              {sending ? "Sending..." : "Send Message"}
+            </Button>
+          </DialogFooter>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            disabled={sending || !phone.trim()}
-            onClick={handleSend}
-            className="bg-green-500 text-white hover:bg-green-600"
-          >
-            {sending ? "Sending..." : "Send Message"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -2469,6 +2661,103 @@ function CreateCampaignWizardWA({
             </Button>
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ─── View Template Modal ─── */
+function ViewTemplateModalWA({ open, onOpenChange, template }: any) {
+  if (!template) return null;
+
+  const components = template.components || [];
+  const bodyComponent = components.find((c: any) => c.type === "BODY");
+  const headerComponent = components.find((c: any) => c.type === "HEADER");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl bg-slate-50 p-0 border-none shadow-2xl rounded-[2rem] overflow-hidden">
+        <DialogHeader className="bg-white px-6 py-6 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">
+                Template Details
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 font-medium mt-1">
+                View the structure and content of your template
+              </DialogDescription>
+            </div>
+            <Badge className={cn(
+              "rounded-full px-4 py-1 text-xs font-bold border-none",
+              (template.status || "approved").toLowerCase() === "approved" ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
+            )}>
+              {(template.status || "approved").toUpperCase()}
+            </Badge>
+          </div>
+        </DialogHeader>
+
+        <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Template Name</p>
+              <p className="font-bold text-slate-900 truncate">{template.name}</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Category</p>
+              <p className="font-bold text-slate-900">{template.category || "MARKETING"}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Message Preview</p>
+            
+            <div className="max-w-sm mx-auto bg-[#E4EFE7] p-4 rounded-3xl shadow-inner relative overflow-hidden">
+              <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2 relative z-10">
+                {headerComponent && (
+                  <div className="pb-2 border-b border-slate-50">
+                    {headerComponent.format === "TEXT" ? (
+                      <p className="font-bold text-slate-900">{headerComponent.text}</p>
+                    ) : (
+                      <div className="bg-slate-100 h-32 rounded-xl flex items-center justify-center">
+                        <FileText className="h-8 w-8 text-slate-300" />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-slate-800 text-sm whitespace-pre-wrap leading-relaxed">
+                  {bodyComponent?.text || "No content"}
+                </p>
+                <div className="flex justify-end pt-1">
+                  <span className="text-[10px] text-slate-400">
+                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Metadata</p>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500 font-medium">Language</span>
+                <span className="font-bold text-slate-900">{template.language || "en_US"}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500 font-medium">Last Updated</span>
+                <span className="font-bold text-slate-900">
+                  {template.updated_at || template.created_at ? new Date(template.updated_at || template.created_at).toLocaleDateString() : 'N/A'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="bg-white p-4 border-t border-slate-100">
+          <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto rounded-full px-8">
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

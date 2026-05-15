@@ -119,8 +119,7 @@ export async function sendWhatsAppMessage(
       requestBody.fileName = params.attachment?.fileName;
     } else {
       requestBody.text = params.body || params.text || "";
-    } 
-
+    }
 
     // Ensure URL has trailing slash if we are hitting the root of the bridge
     const targetUrl = API_URL.endsWith("whatsapp-bridge")
@@ -165,7 +164,10 @@ export async function sendWhatsAppMessage(
           supabase.from("whatsapp_messages" as any) as any
         )
           .insert({
-            application_id: params.application_id,
+            application_id:
+              !params.application_id || params.application_id === "00000000-0000-0000-0000-000000000000"
+                ? null
+                : params.application_id,
             client_id: params.client_id,
             phone_number: params.to,
             message_content: logContent,
@@ -281,16 +283,38 @@ export async function updateMessageStatus(
  * Fetches available message templates for a specific bot from our local database.
  */
 export async function getWhatsAppTemplates(applicationId: string) {
-  const { data, error } = await (
-    supabase.from("whatsapp_templates" as any) as any
-  )
+  const isFallback = applicationId === "00000000-0000-0000-0000-000000000000";
+  
+  let query = (supabase.from("whatsapp_templates" as any) as any)
     .select("*")
-    .eq("application_id", applicationId)
     .order("created_at", { ascending: false });
 
+  if (isFallback) {
+    query = query.is("application_id", null);
+  } else {
+    query = query.eq("application_id", applicationId);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
-    console.error("Failed to fetch templates:", error);
-    throw new Error(error.message || "Failed to fetch templates from database");
+    // Try singular fallback
+    let singularQuery = (supabase.from("whatsapp_template" as any) as any)
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (isFallback) {
+      singularQuery = singularQuery.is("application_id", null);
+    } else {
+      singularQuery = singularQuery.eq("application_id", applicationId);
+    }
+
+    const { data: singularData, error: singularError } = await singularQuery;
+    if (singularError) {
+      console.error("Failed to fetch templates:", singularError);
+      throw new Error(singularError.message || "Failed to fetch templates");
+    }
+    return singularData || [];
   }
 
   return data || [];
@@ -303,36 +327,44 @@ export async function createWhatsAppTemplate(
   applicationId: string,
   templateData: any,
 ) {
-  // 1. Fetch bot details to get API config
-  const { data: bot, error: botError } = await (
-    supabase.from("whatsapp_applications" as any) as any
-  )
-    .select("*")
-    .eq("id", applicationId)
-    .single();
+  // 1. Fetch bot details to get API config (Bypass for Env bot)
+  let bot: any;
+  if (applicationId === "00000000-0000-0000-0000-000000000000") {
+    bot = {
+      id: applicationId,
+      name: "WhapiHub (Env)",
+      provider_type: "api",
+    };
+  } else {
+    // Try plural first, then singular as fallback if needed
+    const { data, error: botError } = await (
+      supabase.from("whatsapp_applications" as any) as any
+    )
+      .select("*")
+      .eq("id", applicationId)
+      .maybeSingle();
 
-  if (botError || !bot) throw new Error("WhatsApp bot not found");
+    if (botError || !data) {
+      // Fallback check for singular table name which appeared in console logs
+      const { data: singularData, error: singularError } = await (
+        supabase.from("whatsapp_application" as any) as any
+      )
+        .select("*")
+        .eq("id", applicationId)
+        .maybeSingle();
+      
+      if (singularError || !singularData) throw new Error("WhatsApp bot not found");
+      bot = singularData;
+    } else {
+      bot = data;
+    }
+  }
 
-  // ─── IMPORTANT NOTE FOR FUTURE DEVELOPERS ───────────────────────────────────
-  // WhapiHub does NOT support template creation via REST API.
-  // Templates must be created manually in Meta Business Manager:
-  // https://business.facebook.com/wa/manage/message-templates/
-  //
-  // If you switch from WhapiHub to another provider (e.g. Twilio, 360Dialog):
-  // → Check if new provider supports template creation API
-  // → If yes, add POST call here with new provider's endpoint
-  // → If no, keep this comment and continue using Meta Business Manager
-  //
-  // WhapiHub only supports SENDING existing approved templates via:
-  // POST https://app.whapihub.com/api/v2/whatsapp-business/messages
-  // with body: { type: "template", name: "template_name", language: "en_US" }
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ... (rest of the function)
   console.log(
     "📝 Saving template locally — create on Meta Business Manager for WhatsApp approval",
   );
 
-  // 3. Save to local database for history/caching
-  // Get current user for attribution
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -342,21 +374,22 @@ export async function createWhatsAppTemplate(
     .eq("user_id", user?.id)
     .maybeSingle();
 
+  // Try to save to whatsapp_templates (plural)
   const { data, error } = await (
     supabase.from("whatsapp_templates" as any) as any
   )
     .insert({
-      application_id: applicationId,
+      application_id: applicationId === "00000000-0000-0000-0000-000000000000" ? null : applicationId,
       client_id: client?.id || null,
       name: templateData.name.trim().toLowerCase().replace(/\s+/g, "_"),
       category: templateData.category || "MARKETING",
       language: templateData.language || "en_US",
       components: templateData.components || [],
-      status: "pending", // New templates start as pending on WhatsApp
+      status: "pending",
       created_by: user?.id,
     })
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error("Failed to create template:", error);
@@ -370,15 +403,31 @@ export async function createWhatsAppTemplate(
  * Fetches templates from the real WhatsApp API and syncs them to our local database.
  */
 export async function syncWhatsAppTemplates(applicationId: string) {
-  const { data: bot, error: botError } = await (
+  if (applicationId === "00000000-0000-0000-0000-000000000000") {
+    return [];
+  }
+  const { data: botData, error: botError } = await (
     supabase.from("whatsapp_applications" as any) as any
   )
     .select("*")
     .eq("id", applicationId)
-    .single();
+    .maybeSingle();
 
-  if (botError || !bot || !bot.api_config?.api_key) {
-    throw new Error("Bot API configurat`ion missing or invalid");
+  let bot = botData;
+  if (botError || !bot) {
+    const { data: singularData, error: singularError } = await (
+      supabase.from("whatsapp_application" as any) as any
+    )
+      .select("*")
+      .eq("id", applicationId)
+      .maybeSingle();
+    
+    if (singularError || !singularData) throw new Error("Bot API configuration missing or invalid");
+    bot = singularData;
+  }
+
+  if (!bot || !bot.api_config?.api_key) {
+    throw new Error("Bot API configuration missing or invalid");
   }
 
   // ─── IMPORTANT NOTE FOR FUTURE DEVELOPERS ───────────────────────────────────

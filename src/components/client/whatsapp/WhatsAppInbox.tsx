@@ -815,6 +815,32 @@ export default function WhatsAppInbox({
     });
   };
 
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!messageId) return;
+    setDeletingMsgId(messageId);
+    try {
+      const { error } = await supabase
+        .from("whatsapp_messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      toast({ title: "Message deleted" });
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingMsgId(null);
+    }
+  };
+
   const isOutboundMessage = (msg: any) =>
     msg.direction === "outbound" ||
     ["sent", "delivered", "read", "queued", "failed"].includes(msg.status);
@@ -1196,7 +1222,7 @@ export default function WhatsAppInbox({
                             <div
                               key={`${msg?.id ?? "message"}-${msg?.sent_at ?? index}`}
                               className={cn(
-                                "flex w-full items-end gap-2",
+                                "group/msg relative flex w-full items-end gap-2",
                                 isOutbound
                                   ? "flex-row-reverse"
                                   : "flex-row",
@@ -1339,11 +1365,26 @@ export default function WhatsAppInbox({
                                     msg.message_content
                                   )}
                                 </div>
-                                <span className="text-[10px] font-medium text-slate-400">
-                                  {msg.sent_at
-                                    ? format(new Date(msg.sent_at), "HH:mm")
-                                    : ""}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-medium text-slate-400">
+                                    {msg.sent_at
+                                      ? format(new Date(msg.sent_at), "HH:mm")
+                                      : ""}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMessage(msg.id)}
+                                    disabled={deletingMsgId === msg.id}
+                                    className="opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 p-1 rounded-full hover:bg-red-100 text-slate-400 hover:text-red-500"
+                                    title="Delete message"
+                                  >
+                                    {deletingMsgId === msg.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-3 w-3" />
+                                    )}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           )

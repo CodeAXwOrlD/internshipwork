@@ -528,7 +528,13 @@ export default function WhatsAppPage() {
     };
   }, [client, fetchCampaigns, fetchStats]);
 
-  const [mainTab, setMainTab] = useState("overview");
+  const [mainTab, setMainTab] = useState(() => {
+    return localStorage.getItem("leadnest_active_tab") || "overview";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("leadnest_active_tab", mainTab);
+  }, [mainTab]);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },

@@ -1,0 +1,44 @@
+/* ─── Template Preview Component ─── */
+function LivePreview({ template }: { template: any }) {
+  if (!template) return null;
+
+  const components = template.components || [];
+  const bodyComponent = components.find((c: any) => c.type === "BODY");
+  const headerComponent = components.find((c: any) => c.type === "HEADER");
+
+  return (
+    <div className="max-w-sm mx-auto bg-[#ECE5DD] p-4 rounded-3xl shadow-inner relative overflow-hidden ring-1 ring-black/5">
+      <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2 relative z-10 ring-1 ring-black/5">
+        {headerComponent && (
+          <div className="pb-2 mb-2 border-b border-slate-50">
+            {headerComponent.format === "TEXT" ? (
+              <p className="font-bold text-slate-900 text-sm">{headerComponent.text}</p>
+            ) : (
+              <div className="bg-slate-100 h-32 rounded-xl flex flex-col items-center justify-center border border-dashed border-slate-200">
+                {headerComponent.format === "IMAGE" && <ImageIcon className="h-8 w-8 text-slate-300 mb-1" />}
+                {headerComponent.format === "VIDEO" && <Video className="h-8 w-8 text-slate-300 mb-1" />}
+                {headerComponent.format === "DOCUMENT" && <FileText className="h-8 w-8 text-slate-300 mb-1" />}
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{headerComponent.format}</p>
+              </div>
+            )}
+          </div>
+        )}
+        <p className="text-slate-800 text-sm whitespace-pre-wrap leading-relaxed break-all">
+          {bodyComponent?.text || "No content"}
+        </p>
+        <div className="flex justify-end pt-1">
+          <span className="text-[10px] text-slate-400">
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      </div>
+      
+      {/* WhatsApp Chat Bubbles Background Decoration */}
+      <div className="absolute top-0 right-0 p-8 opacity-5">
+        <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98 1 4.29L1 23l6.71-2c1.31.64 2.75 1 4.29 1 5.52 0 10-4.48 10-10S17.52 2 12 2z"/>
+        </svg>
+      </div>
+    </div>
+  );
+}

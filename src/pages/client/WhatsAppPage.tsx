@@ -196,6 +196,10 @@ export default function WhatsAppPage() {
   const [templateToDelete, setTemplateToDelete] = useState<any | null>(null);
   const [viewTemplateOpen, setViewTemplateOpen] = useState(false);
   const [templateToView, setTemplateToView] = useState<any | null>(null);
+  const [deleteCampaignOpen, setDeleteCampaignOpen] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<WACampaign | null>(null);
+  const [viewCampaignOpen, setViewCampaignOpen] = useState(false);
+  const [campaignToView, setCampaignToView] = useState<WACampaign | null>(null);
 
   // Message Sending State
   const [phone, setPhone] = useState("");
@@ -469,6 +473,31 @@ export default function WhatsAppPage() {
       });
     }
   }, [fetchTemplates, selectedAppId, templateToDelete, toast]);
+
+  const handleDeleteCampaign = useCallback(async () => {
+    if (!campaignToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("whatsapp_campaigns")
+        .delete()
+        .eq("id", campaignToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: "Campaign deleted successfully" });
+      setCampaigns((prev) => prev.filter((c) => c.id !== campaignToDelete.id));
+    } catch (error: any) {
+      toast({
+        title: "Error deleting campaign",
+        description: error.message || "Unable to delete campaign.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteCampaignOpen(false);
+      setCampaignToDelete(null);
+    }
+  }, [campaignToDelete, toast]);
 
   const fetchAll = useCallback(async () => {
     if (!client) return;
@@ -788,6 +817,14 @@ export default function WhatsAppPage() {
                             key={c.id}
                             campaign={c}
                             onRefresh={fetchCampaigns}
+                            onView={(camp) => {
+                              setCampaignToView(camp);
+                              setViewCampaignOpen(true);
+                            }}
+                            onDelete={(camp) => {
+                              setCampaignToDelete(camp);
+                              setDeleteCampaignOpen(true);
+                            }}
                           />
                         ))}
                       </div>
@@ -1218,6 +1255,37 @@ export default function WhatsAppPage() {
         template={templateToView}
       />
 
+      <ConfirmDialog
+        open={deleteCampaignOpen}
+        onOpenChange={(open) => {
+          setDeleteCampaignOpen(open);
+          if (!open) setCampaignToDelete(null);
+        }}
+        title="Delete campaign?"
+        description={
+          <>
+            This will permanently remove the campaign{" "}
+            <span className="font-bold text-foreground">
+              {campaignToDelete?.campaign_name || "this campaign"}
+            </span>{" "}
+            and its associated transmission history.
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleDeleteCampaign}
+      />
+
+      <ViewCampaignModalWA
+        open={viewCampaignOpen}
+        onOpenChange={(open) => {
+          setViewCampaignOpen(open);
+          if (!open) setCampaignToView(null);
+        }}
+        campaign={campaignToView}
+      />
+
       <CreateCampaignWizardWA
         open={campaignWizardOpen}
         onOpenChange={setCampaignWizardOpen}
@@ -1561,9 +1629,13 @@ function QuickAction({
 function CampaignCard({
   campaign,
   onRefresh,
+  onView,
+  onDelete,
 }: {
   campaign: WACampaign;
   onRefresh: () => void;
+  onView: (c: WACampaign) => void;
+  onDelete: (c: WACampaign) => void;
 }) {
   const progress =
     campaign.total_contacts > 0
@@ -1581,7 +1653,27 @@ function CampaignCard({
               })}
             </p>
           </div>
-          <CampaignStatusBadge status={campaign.status} />
+            <div className="flex items-center gap-2">
+              <CampaignStatusBadge status={campaign.status} />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 hover:bg-emerald-50 hover:text-emerald-600"
+                onClick={() => onView(campaign)}
+                aria-label={`View campaign ${campaign.campaign_name}`}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 hover:bg-red-50 hover:text-red-600"
+                onClick={() => onDelete(campaign)}
+                aria-label={`Delete campaign ${campaign.campaign_name}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
         </div>
         <Progress value={progress} className="h-2 mb-2" />
         <div className="flex gap-4 text-[10px] text-muted-foreground">
@@ -1602,6 +1694,79 @@ function CampaignStatusBadge({ status }: { status: string }) {
     draft: "secondary",
   };
   return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
+}
+
+function ViewCampaignModalWA({
+  open,
+  onOpenChange,
+  campaign,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  campaign: WACampaign | null;
+}) {
+  if (!campaign) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl bg-slate-50 p-0 border-none shadow-2xl rounded-[2rem] overflow-hidden">
+        <DialogHeader className="bg-white px-6 py-6 border-b border-slate-100">
+          <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">
+            Campaign Details
+          </DialogTitle>
+          <DialogDescription className="text-slate-500 font-medium mt-1">
+            Review the campaign summary and launch settings.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Campaign</p>
+              <p className="font-bold text-slate-900 break-all">{campaign.campaign_name}</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+              <CampaignStatusBadge status={campaign.status} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Contacts</p>
+              <p className="font-black text-slate-900 text-xl">{campaign.total_contacts}</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sent</p>
+              <p className="font-black text-slate-900 text-xl">{campaign.messages_sent}</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Delivered</p>
+              <p className="font-black text-slate-900 text-xl">{campaign.messages_delivered}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Message Template</p>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{campaign.message_template || "—"}</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between text-sm">
+            <span className="text-slate-500 font-medium">Created</span>
+            <span className="font-bold text-slate-900">
+              {campaign.created_at ? new Date(campaign.created_at).toLocaleString() : "N/A"}
+            </span>
+          </div>
+        </div>
+
+        <DialogFooter className="bg-white p-4 border-t border-slate-100">
+          <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto rounded-full px-8">
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function MessageStatusBadge({ status }: { status: string }) {
@@ -2545,19 +2710,50 @@ function CreateCampaignWizardWA({
   clientId,
   onCreated,
   selectedAppId,
+  templates: campaignTemplates,
 }: any) {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [contacts, setContacts] = useState<any[]>([]);
   const [messageContent, setMessageContent] = useState("");
+  const [messageType, setMessageType] = useState<"text" | "template" | "video" | "photo" | "document">("text");
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [templateName, setTemplateName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  const selectedTemplate = campaignTemplates?.find(
+    (t: any) => (t.name || t.template_name) === templateName,
+  );
+  const requiresMedia = selectedTemplate?.components?.some(
+    (c: any) =>
+      c.type === "HEADER" &&
+      ["IMAGE", "VIDEO", "AUDIO", "DOCUMENT"].includes(c.format),
+  );
+  const stepLabel = step === 1 ? "Campaign details" : step === 2 ? "Import contacts" : "Message preview";
+  const previewTitle =
+    step === 1
+      ? name.trim() || "Your campaign will appear here"
+      : step === 2
+        ? `${contacts.length} contact${contacts.length === 1 ? "" : "s"} imported`
+        : messageType === "template"
+          ? selectedTemplate?.name || selectedTemplate?.template_name || templateName || "Template preview"
+          : `${messageType.charAt(0).toUpperCase()}${messageType.slice(1)} message`;
+  const previewBody =
+    step === 1
+      ? "Add a campaign name, import contacts, then craft the message preview."
+      : step === 2
+        ? "Imported contacts will stay visible here while you move between steps."
+        : messageContent.trim() || "Your campaign message preview will appear here.";
 
   const reset = () => {
     setStep(1);
     setName("");
     setContacts([]);
     setMessageContent("");
+    setMessageType("text");
+    setMediaUrl("");
+    setTemplateName("");
   };
 
   const handleCreate = async () => {
@@ -2577,12 +2773,34 @@ function CreateCampaignWizardWA({
 
     setCreating(true);
     try {
+      if (messageType === "template" && !templateName) {
+        return toast({
+          title: "Template required",
+          description: "Please select a template before launching the campaign.",
+          variant: "destructive",
+        });
+      }
+
+      if (
+        (messageType === "video" || messageType === "photo" || messageType === "document" || (messageType === "template" && requiresMedia)) &&
+        !mediaUrl.trim()
+      ) {
+        return toast({
+          title: "Media URL required",
+          description: "Please provide a media URL for this message type.",
+          variant: "destructive",
+        });
+      }
+
       const { data: campaign } = await supabase
         .from("whatsapp_campaigns")
         .insert({
           client_id: clientId,
           campaign_name: name.trim(),
-          message_template: messageContent.trim(),
+          message_template:
+            messageType === "template"
+              ? templateName || messageContent.trim()
+              : messageContent.trim(),
           total_contacts: contacts.length,
           status: "sending",
         })
@@ -2595,9 +2813,13 @@ function CreateCampaignWizardWA({
         campaign_id: campaign.id,
         phone_number: c.phone,
         message_content: messageContent,
-        message_type: "text" as const,
-        template_name: null,
-        status: "queued" as const,
+        message_type: messageType === "photo" ? "image" : messageType,
+        media_url:
+          messageType === "text"
+            ? null
+            : mediaUrl.trim() || null,
+        template_name: messageType === "template" ? templateName : null,
+        status: "queued",
       }));
       await (supabase.from("whatsapp_messages" as any) as any).insert(msgs);
       toast({ title: "Campaign Launched!" });
@@ -2619,61 +2841,419 @@ function CreateCampaignWizardWA({
         onOpenChange(v);
       }}
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>WhatsApp Campaign (Step {step})</DialogTitle>
-        </DialogHeader>
-        {step === 1 && (
-          <div className="space-y-4">
-            <div>
-              <Label>Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
+      <DialogContent className="w-[94vw] max-w-6xl overflow-hidden border-slate-200/70 bg-slate-50 p-0 shadow-2xl sm:w-[92vw] md:w-[90vw]">
+        <div className="max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 px-4 py-4 text-white sm:px-6 sm:py-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-emerald-100">
+                  <Send className="h-3.5 w-3.5" />
+                  Campaign builder
+                </div>
+                <DialogTitle className="text-2xl font-semibold tracking-tight text-white">
+                  Create WhatsApp Campaign
+                </DialogTitle>
+                <DialogDescription className="max-w-2xl text-sm text-slate-300">
+                  {stepLabel} — import your contacts and preview the final message before launching.
+                </DialogDescription>
+              </div>
+
+              <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-200 md:flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-200">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-medium text-white">{contacts.length || 0} contacts</p>
+                  <p className="text-slate-300">Responsive, lightweight campaign flow</p>
+                </div>
+              </div>
             </div>
-            <Button
-              className="w-full"
-              onClick={() => setStep(2)}
-              disabled={!name.trim()}
-            >
-              Next
-            </Button>
+          </DialogHeader>
+
+          <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="min-w-0 space-y-5 border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:border-b-0 lg:border-r">
+              {step === 1 && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Campaign Name
+                  </Label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="E.g. May promo blast"
+                    className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-base shadow-sm transition-colors focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                  />
+                  <p className="text-xs leading-5 text-slate-500">
+                    Give this campaign a clear name so it is easy to track later.
+                  </p>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Import CSV Contacts
+                    </Label>
+                    <span className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-2xl border border-amber-100 flex items-start gap-1.5 leading-5">
+                      <span className="font-bold shrink-0">Note:</span>
+                      All phone numbers must be formatted without the "+" sign (e.g., 1234567890).
+                    </span>
+                  </div>
+
+                  <Input
+                    type="file"
+                    accept=".csv"
+                    className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-sm shadow-sm file:mr-4 file:rounded-full file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-emerald-600"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      const fileInput = e.target;
+                      const reader = new FileReader();
+
+                      reader.onload = (event) => {
+                        const text = event.target?.result as string;
+                        const lines = text.split("\n").filter((l) => l.trim());
+
+                        if (lines.length === 0) {
+                          toast({
+                            title: "Empty CSV",
+                            description: "The uploaded file is empty.",
+                            variant: "destructive",
+                          });
+                          fileInput.value = "";
+                          return;
+                        }
+
+                        const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+                        const phoneIndex = headers.indexOf("phone");
+
+                        if (phoneIndex === -1) {
+                          toast({
+                            title: "Invalid CSV",
+                            description: "CSV must have a 'phone' column header",
+                            variant: "destructive",
+                          });
+                          fileInput.value = "";
+                          return;
+                        }
+
+                        let hasPlusSign = false;
+
+                        const parsed = lines
+                          .slice(1)
+                          .map((line) => {
+                            const cols = line.split(",");
+                            const phoneVal = cols[phoneIndex]?.trim() || "";
+                            if (phoneVal.includes("+")) hasPlusSign = true;
+                            return { phone: phoneVal.replace(/[^0-9]/g, "") };
+                          })
+                          .filter((c) => c.phone.length >= 10);
+
+                        if (hasPlusSign) {
+                          toast({
+                            title: "Invalid Number Format",
+                            description:
+                              "Found phone numbers containing a '+' sign. Please remove all '+' signs from the CSV and try again.",
+                            variant: "destructive",
+                          });
+                          fileInput.value = "";
+                          return;
+                        }
+
+                        setContacts(parsed);
+                        toast({ title: `${parsed.length} contacts imported successfully` });
+                        fileInput.value = "";
+                      };
+
+                      reader.readAsText(file);
+                    }}
+                  />
+
+                  {contacts.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-bold text-slate-700">Imported Contacts</p>
+                        <p className="text-[11px] text-slate-500">
+                          {contacts.length} contact{contacts.length === 1 ? "" : "s"} ready
+                        </p>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-800 bg-white overflow-hidden shadow-sm">
+                        <div className="max-h-64 overflow-auto">
+                          <Table className="min-w-[320px]">
+                            <TableHeader className="sticky top-0 z-10 bg-slate-100 border-b border-slate-800">
+                              <TableRow className="hover:bg-slate-100 border-b border-slate-800">
+                                <TableHead className="w-16">#</TableHead>
+                                <TableHead>Phone Number</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {contacts.map((contact, index) => (
+                                <TableRow key={`${contact.phone}-${index}`} className="border-b border-slate-200 last:border-b-0">
+                                  <TableCell className="font-medium text-slate-500">{index + 1}</TableCell>
+                                  <TableCell className="font-mono text-slate-900">{contact.phone}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Message Type
+                    </Label>
+                    <Select
+                      value={messageType}
+                      onValueChange={(val: any) => {
+                        setMessageType(val);
+                        if (val !== "template") {
+                          setTemplateName("");
+                        }
+                        if (val === "text") {
+                          setMediaUrl("");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="template">Template</SelectItem>
+                        <SelectItem value="video">Video</SelectItem>
+                        <SelectItem value="photo">Photo</SelectItem>
+                        <SelectItem value="document">Document</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {messageType === "template" && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Template
+                      </Label>
+                      <Select
+                        value={templateName}
+                        onValueChange={(val) => {
+                          setTemplateName(val);
+                          const tpl = campaignTemplates.find(
+                            (t: any) => (t.name || t.template_name) === val,
+                          );
+                          const body =
+                            tpl?.components?.find((c: any) => c.type === "BODY")
+                              ?.text || tpl?.body || "";
+                          setMessageContent(body);
+                        }}
+                      >
+                        <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
+                          <SelectValue placeholder="Select a template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {campaignTemplates.map((t: any) => (
+                            <SelectItem key={t.id} value={t.name || t.template_name}>
+                              {t.name || t.template_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(messageType === "video" || messageType === "photo" || messageType === "document" || (messageType === "template" && requiresMedia)) && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Media URL
+                      </Label>
+                      <Input
+                        placeholder={`Enter ${messageType} URL`}
+                        value={mediaUrl}
+                        onChange={(e) => setMediaUrl(e.target.value)}
+                        className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-base shadow-sm transition-colors focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {messageType === "template" ? "Template Body" : messageType === "text" ? "Message" : "Caption (Optional)"}
+                    </Label>
+                    <Textarea
+                      value={messageContent}
+                      onChange={(e) => setMessageContent(e.target.value)}
+                      readOnly={messageType === "template"}
+                      placeholder={messageType === "text" ? "Enter your message here..." : "Enter caption..."}
+                      className="min-h-[140px] rounded-3xl border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-slate-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0 space-y-5 bg-slate-100 px-4 py-5 sm:px-6 sm:py-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Campaign preview</h3>
+                  <p className="text-sm text-slate-500">
+                    {step === 3 ? "See how the message will look before launching." : previewBody}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="rounded-full capitalize">
+                  Step {step}
+                </Badge>
+              </div>
+
+              <div className="mx-auto w-full max-w-[22rem] overflow-x-auto rounded-[2rem] border border-slate-200 bg-slate-950 p-2.5 shadow-2xl sm:max-w-[24rem] lg:max-w-sm xl:max-w-md">
+                <div className="rounded-[1.65rem] bg-[#ECE5DD] p-3">
+                  <div className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-black/5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-sm font-semibold text-white shadow-md shadow-green-500/30">
+                        {contacts.length ? `${contacts.length}`.slice(-2) : "WA"}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 break-all">
+                          {previewTitle}
+                        </p>
+                        <p className="text-xs text-slate-500">{stepLabel}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ml-auto w-full max-w-full rounded-[1.5rem] rounded-tr-md bg-white p-3.5 shadow-sm ring-1 ring-black/5 sm:p-4">
+                    <div className="break-words whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                      {step === 3 ? (
+                        messageType === "template" ? (
+                          previewBody.split(/(\{\{\d+\}\})/g).filter(Boolean).map((segment, index) =>
+                            /\{\{\d+\}\}/.test(segment) ? (
+                              <span
+                                key={`${segment}-${index}`}
+                                className="mx-0.5 inline-block max-w-full break-all rounded-md bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-amber-800 ring-1 ring-amber-200"
+                              >
+                                {segment}
+                              </span>
+                            ) : (
+                              <span key={`${segment}-${index}`} className="break-all">
+                                {segment}
+                              </span>
+                            ),
+                          )
+                        ) : (
+                          previewBody || "Your message will appear here..."
+                        )
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="font-semibold text-slate-900">{previewTitle}</p>
+                          <p className="text-sm text-slate-700">{previewBody}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {step === 3 && mediaUrl && (
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                          <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                          Media attachment
+                        </div>
+                        <p className="mt-2 break-all text-xs text-slate-600">
+                          {mediaUrl}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-100 capitalize">
+                        {step === 3 ? messageType : step === 2 ? "contacts" : "details"}
+                      </Badge>
+                      {templateName && step === 3 && (
+                        <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
+                          {templateName}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-end text-[11px] text-slate-500">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 shadow-sm">
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                      Responsive preview
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Fast setup
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    The form stays lightweight and only renders what you need for each step.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Mobile friendly
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    The layout collapses cleanly on smaller screens without losing the preview.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-        {step === 2 && (
-          <div className="space-y-4">
-            <Label>Import CSV (Mock import for now)</Label>
-            <Input
-              type="file"
-              onChange={() =>
-                setContacts([{ phone: "12345" }, { phone: "67890" }])
+
+          <DialogFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-full px-5 sm:w-auto">
+                Cancel
+              </Button>
+              {step > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setStep((s) => Math.max(1, s - 1))}
+                  className="w-full rounded-full px-5 sm:w-auto"
+                >
+                  Back
+                </Button>
+              )}
+            </div>
+
+            <Button
+              className="w-full rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-6 text-white shadow-lg shadow-emerald-500/25 transition-transform hover:scale-[1.01] hover:from-emerald-600 hover:to-green-700 sm:w-auto"
+              onClick={() => {
+                if (step === 1) {
+                  setStep(2);
+                  return;
+                }
+                if (step === 2) {
+                  setStep(3);
+                  return;
+                }
+                handleCreate();
+              }}
+              disabled={
+                creating ||
+                (step === 1 && !name.trim()) ||
+                (step === 2 && contacts.length === 0) ||
+                (step === 3 && (
+                  (messageType === "text" && !messageContent.trim()) ||
+                  (messageType === "template" && (!templateName || (requiresMedia && !mediaUrl.trim()))) ||
+                  ((messageType === "video" || messageType === "photo" || messageType === "document") && !mediaUrl.trim())
+                ))
               }
-            />
-            <Button
-              className="w-full"
-              onClick={() => setStep(3)}
-              disabled={contacts.length === 0}
             >
-              Next
+              {creating ? "Launching..." : step < 3 ? "Next" : "Launch"}
             </Button>
-          </div>
-        )}
-        {step === 3 && (
-          <div className="space-y-4">
-            <div>
-              <Label>Message</Label>
-              <Textarea
-                value={messageContent}
-                onChange={(e) => setMessageContent(e.target.value)}
-              />
-            </div>
-            <Button
-              className="w-full bg-green-500 text-white"
-              onClick={handleCreate}
-              disabled={creating || !messageContent.trim()}
-            >
-              {creating ? "Launching..." : "Launch"}
-            </Button>
-          </div>
-        )}
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

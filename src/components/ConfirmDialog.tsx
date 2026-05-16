@@ -15,7 +15,7 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  description: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "destructive";
@@ -43,8 +43,8 @@ export function ConfirmDialog({
     <AlertDialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setTyped(""); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogTitle className="break-all font-bold">{title}</AlertDialogTitle>
+          <AlertDialogDescription className="break-all">{description}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {confirmText && (

@@ -1059,7 +1059,7 @@ export default function WhatsAppPage() {
                             key={tpl.id || tpl.name}
                             className="border-border/30 hover:bg-muted/10 transition-colors"
                           >
-                            <TableCell className="py-6 font-black text-primary">
+                            <TableCell className="py-6 font-black text-primary max-w-[200px] break-all">
                               {tpl.name}
                             </TableCell>
                             <TableCell>
@@ -1194,7 +1194,15 @@ export default function WhatsAppPage() {
           if (!open) setTemplateToDelete(null);
         }}
         title="Delete template?"
-        description={`This will permanently remove ${templateToDelete?.name || "this template"} from your template list.`}
+        description={
+          <>
+            This will permanently remove{" "}
+            <span className="font-bold text-foreground">
+              {templateToDelete?.name || "this template"}
+            </span>{" "}
+            from your template list.
+          </>
+        }
         confirmLabel="Delete"
         cancelLabel="Keep it"
         variant="destructive"
@@ -2181,7 +2189,7 @@ function CreateTemplateModalWA({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="w-[94vw] max-w-6xl overflow-hidden border-slate-200/70 bg-slate-50 p-0 shadow-2xl sm:w-[92vw] md:w-[90vw]">
+      <DialogContent className="w-[94vw] max-w-6xl overflow-hidden border-slate-200/70 bg-slate-50 p-0 shadow-2xl sm:w-[92vw] md:w-[90vw] will-change-transform transform-gpu">
         <div className="max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 px-4 py-4 text-white sm:px-6 sm:py-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -2705,7 +2713,7 @@ function ViewTemplateModalWA({ open, onOpenChange, template }: any) {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Template Name</p>
-              <p className="font-bold text-slate-900 truncate">{template.name}</p>
+              <p className="font-bold text-slate-900 break-all">{template.name}</p>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Category</p>
@@ -2729,7 +2737,7 @@ function ViewTemplateModalWA({ open, onOpenChange, template }: any) {
                     )}
                   </div>
                 )}
-                <p className="text-slate-800 text-sm whitespace-pre-wrap leading-relaxed">
+                <p className="text-slate-800 text-sm whitespace-pre-wrap leading-relaxed break-all">
                   {bodyComponent?.text || "No content"}
                 </p>
                 <div className="flex justify-end pt-1">

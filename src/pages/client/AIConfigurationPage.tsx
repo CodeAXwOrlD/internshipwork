@@ -35,6 +35,7 @@ import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 
 export default function AIConfigurationPage() {
   const { primaryColor } = useClient();
@@ -289,16 +290,18 @@ export default function AIConfigurationPage() {
 
   const selectedFaq = faqs.find((f) => f.id === selectedFaqId) || null;
 
-  if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center text-primary font-bold">
-        Synchronizing Brain...
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 pb-20">
+    <div className="relative space-y-8 pb-20">
+      <ComingSoonOverlay
+        title="Central Intelligence AI Control"
+        description="Fine-tune your AI's personality, system prompts, knowledge base documentation, and response creativity parameters."
+        features={[
+          "Custom System Prompt & Persona Editor",
+          "Interactive FAQ & Knowledge Base Training",
+          "Response Temperature & Creativity Controls",
+          "Model Training Sync & Validation"
+        ]}
+      />
       {/* Header Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-white to-accent/10 border border-primary/20 p-8 md:p-12 shadow-sm group">
         <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity pointer-events-none">

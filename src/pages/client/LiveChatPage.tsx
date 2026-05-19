@@ -42,20 +42,63 @@ import { cn } from "@/lib/utils";
 import { useClient } from "@/contexts/ClientContext";
 
 import { toast } from "sonner";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 
 export default function LiveChatPage() {
+  const mockChats = [
+    {
+      id: "mock-1",
+      name: "Guest Visitor #4892",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=4892",
+      lastMessage: "I want to know about your real estate packages",
+      time: "10:24 AM",
+      unread: 1,
+      status: "online",
+      assignedTo: "AI Agent",
+      labels: ["ACTIVE"]
+    },
+    {
+      id: "mock-2",
+      name: "Guest Visitor #8210",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=8210",
+      lastMessage: "Is there a free trial available?",
+      time: "09:15 AM",
+      unread: 0,
+      status: "offline",
+      assignedTo: "AI Agent",
+      labels: ["HUMAN"]
+    }
+  ];
+
+  const mockMessages = [
+    {
+      id: "m1",
+      sender: "customer",
+      text: "Hello! I am a visitor inquiring about your pricing plans.",
+      time: "10:23 AM",
+      isAI: false
+    },
+    {
+      id: "m2",
+      sender: "ai",
+      text: "Hello! I'd be happy to help. We offer three primary packages: Starter, Growth, and Enterprise. Which one would you like to explore?",
+      time: "10:24 AM",
+      isAI: true
+    }
+  ];
+
   const { primaryColor } = useClient();
-  const [selectedChat, setSelectedChat] = useState<any>(null);
+  const [selectedChat, setSelectedChat] = useState<any>(mockChats[0]);
   const [message, setMessage] = useState("");
   const [isAIActive, setIsAIActive] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Real Chat State
-  const [chats, setChats] = useState<any[]>([]);
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chats, setChats] = useState<any[]>(mockChats);
+  const [chatMessages, setChatMessages] = useState<any[]>(mockMessages);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>("mock-1");
 
   useEffect(() => {
     fetchActiveSessions();
@@ -314,7 +357,17 @@ export default function LiveChatPage() {
   };
 
   return (
-    <div className="flex flex-1 min-h-0 overflow-hidden rounded-3xl bg-white/50 bg-opacity-95 border border-primary/10 shadow-2xl">
+    <div className="relative flex flex-1 min-h-0 overflow-hidden rounded-3xl bg-white/50 bg-opacity-95 border border-primary/10 shadow-2xl">
+      <ComingSoonOverlay
+        title="Live Chat & Support Panel"
+        description="Connect in real-time with visitors on your websites, direct human intervention, and manage active customer support threads."
+        features={[
+          "Real-Time Visitor Message Streams",
+          "Human-Agent Takeover Protocol",
+          "Interactive Chat Widget Installer",
+          "Customer Sentiment Analysis & Labels"
+        ]}
+      />
       {/* 1. Sidebar: Chat List */}
       <div
         className={cn(

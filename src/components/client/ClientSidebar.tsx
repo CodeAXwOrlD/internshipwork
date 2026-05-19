@@ -66,42 +66,40 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
 
   const getSortWeight = (slug: string) => {
     switch (slug) {
+      case "dashboard": return 0;
       case "first-voice": return 1;
       case "voice-telecaller": return 2; // Call Orbitor
       case "whatsapp": return 3;         // LeadNest
       case "social-media": return 4;     // Socialium
-      case "voice-agent": return 5;      // EcoAssist
-      case "voice-receptionist": return 6;
-      case "email-marketing": return 7;
+      case "service-catalog": return 5;
+      case "analytics": return 6;
+      case "usage": return 7;
+      case "leads": return 8;
+      case "voice-agent": return 9;      // EcoAssist
+      case "voice-receptionist": return 10;
+      case "email-marketing": return 11;
+      case "live-chat": return 12;
+      case "bot-history": return 13;
+      case "ai-config": return 14;
+      case "settings": return 15;
       default: return 100;
     }
   };
 
-  serviceNavItems.sort((a, b) => getSortWeight(a.routeSlug) - getSortWeight(b.routeSlug));
-
-  const leadsNavItem = { title: "Leads", icon: Users, path: "/client/leads", routeSlug: "leads" };
-  const socialMediaIdx = serviceNavItems.findIndex(item => item.routeSlug === "social-media");
-  if (socialMediaIdx !== -1) {
-    serviceNavItems.splice(socialMediaIdx + 1, 0, leadsNavItem);
-  } else {
-    serviceNavItems.push(leadsNavItem);
-  }
-
-  const commonNavItems = [
-    { title: "Live Chat", icon: MessageSquare, path: "/client/live-chat" },
-    { title: "Bot History", icon: HistoryIcon, path: "/client/whatsapp/history" },
-    { title: "AI Configuration", icon: Sparkles, path: "/client/ai-config" },
-    { title: "Service Catalog", icon: Package, path: "/client/services" },
-    { title: "Analytics", icon: BarChart3, path: "/client/analytics" },
-    { title: "Usage & Billing", icon: Activity, path: "/client/usage" },
-    { title: "Settings", icon: Settings, path: "/client/settings" },
-  ];
-
-  const allNavItems = [
-    { title: "Dashboard", icon: LayoutDashboard, path: "/client" },
+  const rawNavItems = [
+    { title: "Dashboard", icon: LayoutDashboard, path: "/client", routeSlug: "dashboard" },
     ...serviceNavItems,
-    ...commonNavItems,
+    { title: "Leads", icon: Users, path: "/client/leads", routeSlug: "leads" },
+    { title: "Service Catalog", icon: Package, path: "/client/services", routeSlug: "service-catalog" },
+    { title: "Analytics", icon: BarChart3, path: "/client/analytics", routeSlug: "analytics" },
+    { title: "Usage & Billing", icon: Activity, path: "/client/usage", routeSlug: "usage" },
+    { title: "Live Chat", icon: MessageSquare, path: "/client/live-chat", routeSlug: "live-chat" },
+    { title: "Bot History", icon: HistoryIcon, path: "/client/whatsapp/history", routeSlug: "bot-history" },
+    { title: "AI Configuration", icon: Sparkles, path: "/client/ai-config", routeSlug: "ai-config" },
+    { title: "Settings", icon: Settings, path: "/client/settings", routeSlug: "settings" },
   ];
+
+  const allNavItems = rawNavItems.sort((a, b) => getSortWeight(a.routeSlug) - getSortWeight(b.routeSlug));
 
   // Find the most specific (longest) path that matches the current URL
   const activePath = allNavItems.reduce((longest, item) => {

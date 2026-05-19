@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 
 export default function WhatsAppHistoryPage() {
   const [selectedBotId, setSelectedBotId] = useState<string>("all");
@@ -101,16 +102,26 @@ export default function WhatsAppHistoryPage() {
     }
   };
 
-  if (isBotsLoading)
-    return (
-      <div className="p-8 space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-[400px] w-full rounded-2xl" />
-      </div>
-    );
+  // if (isBotsLoading)
+  //   return (
+  //     <div className="p-8 space-y-6">
+  //       <Skeleton className="h-10 w-64" />
+  //       <Skeleton className="h-[400px] w-full rounded-2xl" />
+  //     </div>
+  //   );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
+    <div className="relative max-w-6xl mx-auto p-4 md:p-8 space-y-8">
+      <ComingSoonOverlay
+        title="Automated Bot Interactions & History"
+        description="Review complete message transcripts, status checks, and detailed delivery logs of your automated WhatsApp bots."
+        features={[
+          "Delivery & Read Receipts Tracking",
+          "Incoming/Outgoing Message Transcripts",
+          "Interactive Search & Bot Filtering",
+          "Detailed Delivery Metadata Logs"
+        ]}
+      />
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-3">

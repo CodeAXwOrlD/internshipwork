@@ -270,7 +270,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                     >
                       {item.subItems!.map((subItem) => {
                         const searchParamTab = new URLSearchParams(location.search).get('tab');
-                        const subActive = searchParamTab ? subItem.path.includes(`tab=${searchParamTab}`) : subItem.path.includes('tab=overview');
+                        const subActive = searchParamTab ? subItem.path.includes(`tab=${searchParamTab}`) : false;
                         
                         return (
                           <NavLink

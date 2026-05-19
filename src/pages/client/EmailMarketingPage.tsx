@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigate } from "react-router-dom";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +50,17 @@ export default function EmailMarketingPage() {
   if (!emailService) return <Navigate to="/client" replace />;
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="relative space-y-8 pb-20">
+      <ComingSoonOverlay
+        title="AI Email Marketing"
+        description="Design high-converting campaigns, automate target flows, and optimize your subject lines and schedules with predictive AI models."
+        features={[
+          "Drag-and-Drop Lifecycle Sequence Builder",
+          "AI Subject Line Predictions & Open Rate Analyzer",
+          "Automated Auto-Responders & Flow Orchestration",
+          "Target Audience Filters & Segmentation Analytics"
+        ]}
+      />
       {/* 1. Branded Header Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1e293b] via-[#0f172a] to-primary/40 p-10 text-white shadow-2xl border border-white/5">
         <div className="absolute -right-20 -top-20 opacity-10">

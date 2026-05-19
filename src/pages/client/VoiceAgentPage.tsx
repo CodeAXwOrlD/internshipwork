@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigate, useNavigate } from "react-router-dom";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { formatDuration } from "@/utils/duration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -213,10 +214,19 @@ export default function VoiceAgentPage() {
 
   if (contextLoading) return <LoadingSkeleton />;
   if (!agentService) return <Navigate to="/client" replace />;
-  if (isLoading) return <LoadingSkeleton />;
 
   return (
-    <div   className="space-y-8 pb-12">
+    <div className="relative space-y-8 pb-12">
+      <ComingSoonOverlay
+        title="EcoAssist (Neural Voice Agent)"
+        description="Bootstrap and control your autonomous AI voice agents that intercept global sequences, handle inbound/outbound calls, and sync live leads."
+        features={[
+          "Autonomous Neural Dialog System (Live Phone Streams)",
+          "Real-Time Stream Manifest Logs & Recordings",
+          "Continuous Session Durations & Conversion Analytics",
+          "Central Command AI Core Bootstrap/Suspension Controller"
+        ]}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div>

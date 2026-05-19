@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigate, useNavigate } from "react-router-dom";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { formatDuration } from "@/utils/duration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -280,12 +281,22 @@ export default function VoiceReceptionistPage() {
 
   if (contextLoading) return <LoadingSkeleton />;
   if (!receptionistService) return <Navigate to="/client" replace />;
-  if (isLoading) return <LoadingSkeleton />;
 
   const successRate = callStats.received > 0 ? Math.round((callStats.handled / callStats.received) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <ComingSoonOverlay
+        title="AI Voice Receptionist"
+        description="Configure dynamic voice instructions, weekly business hours, and phone directories to let our AI receptionist answer, filter, and forward inbound calls."
+        features={[
+          "Smart AI Inbound Interception & Dialogs",
+          "Dynamic Call Routing & Team Forwarding Directory",
+          "Weekly Office Availability Schedules",
+          "Voicemail Inbox with AI Transcription Summaries",
+          "Inbound Call Logs & Volume Charts"
+        ]}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

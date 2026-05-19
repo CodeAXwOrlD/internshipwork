@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClient } from "@/contexts/ClientContext";
-import { getServicePath, getServiceIcon, getServiceLabel } from "@/lib/service-routes";
+import { getServicePath, getServiceIcon, getServiceLabel, getRouteSlug } from "@/lib/service-routes";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
@@ -43,11 +43,14 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
       const label = getServiceLabel(slug) || svc.service_name;
       if (!Icon) return null;
       
+      const routeSlug = getRouteSlug(slug);
+      
       if (slug === "whatsapp-automation" || slug === "whatsapp") {
         return { 
           title: label, 
           icon: Icon, 
           path: getServicePath(slug),
+          routeSlug,
           subItems: [
             { title: "Overview", icon: BarChart3, path: `${getServicePath(slug)}?tab=overview` },
             { title: "Inbox", icon: MessageSquare, path: `${getServicePath(slug)}?tab=inbox` },
@@ -57,12 +60,27 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
         };
       }
       
-      return { title: label, icon: Icon, path: getServicePath(slug) };
+      return { title: label, icon: Icon, path: getServicePath(slug), routeSlug };
     })
-    .filter(Boolean) as { title: string; icon: React.ElementType; path: string; subItems?: any[] }[];
+    .filter(Boolean) as { title: string; icon: React.ElementType; path: string; routeSlug: string; subItems?: any[] }[];
 
-  const leadsNavItem = { title: "Leads", icon: Users, path: "/client/leads" };
-  const socialMediaIdx = serviceNavItems.findIndex(item => item.path === "/client/social-media");
+  const getSortWeight = (slug: string) => {
+    switch (slug) {
+      case "first-voice": return 1;
+      case "voice-telecaller": return 2; // Call Orbitor
+      case "whatsapp": return 3;         // LeadNest
+      case "social-media": return 4;     // Socialium
+      case "voice-agent": return 5;      // EcoAssist
+      case "voice-receptionist": return 6;
+      case "email-marketing": return 7;
+      default: return 100;
+    }
+  };
+
+  serviceNavItems.sort((a, b) => getSortWeight(a.routeSlug) - getSortWeight(b.routeSlug));
+
+  const leadsNavItem = { title: "Leads", icon: Users, path: "/client/leads", routeSlug: "leads" };
+  const socialMediaIdx = serviceNavItems.findIndex(item => item.routeSlug === "social-media");
   if (socialMediaIdx !== -1) {
     serviceNavItems.splice(socialMediaIdx + 1, 0, leadsNavItem);
   } else {

@@ -41,12 +41,8 @@ export default function ComingSoonOverlay({ title, description, features }: Comi
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center p-4 md:p-8 bg-slate-950/40 backdrop-blur-[5px] overflow-hidden animate-overlay-in">
+    <div className="fixed inset-0 z-20 flex items-center justify-center p-4 md:p-8 bg-slate-950/45 backdrop-blur-[5px] overflow-hidden">
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes overlayFadeIn {
-          from { backdrop-filter: blur(0px); background-color: rgba(15, 23, 42, 0); }
-          to { backdrop-filter: blur(5px); background-color: rgba(15, 23, 42, 0.45); }
-        }
         @keyframes cardEnter {
           from { opacity: 0; transform: scale(0.95) translateY(10px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
@@ -55,9 +51,6 @@ export default function ComingSoonOverlay({ title, description, features }: Comi
           0% { transform: translate(0px, 0px) scale(1); }
           50% { transform: translate(10px, -15px) scale(1.1); }
           100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-overlay-in {
-          animation: overlayFadeIn 0.18s ease-out forwards;
         }
         .animate-card-in {
           animation: cardEnter 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;

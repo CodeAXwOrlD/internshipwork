@@ -66,7 +66,7 @@ export default function EmailMarketingPage() {
         <div className="absolute -right-20 -top-20 opacity-10">
           <Mail className="w-80 h-80 rotate-12" />
         </div>
-        
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 max-w-xl">
             <Badge className="bg-primary/20 hover:bg-primary/30 text-primary border-primary/30 py-1 px-3">
@@ -90,8 +90,8 @@ export default function EmailMarketingPage() {
               <Progress value={(emailService.usage_consumed / emailService.usage_limit) * 100} className="h-1.5 bg-white/10" />
               <p className="text-[10px] text-slate-500 mt-2">Resetting in 12 days</p>
             </div>
-            <Button 
-              className="h-12 rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform" 
+            <Button
+              className="h-12 rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
               style={{ backgroundColor: primaryColor }}
               onClick={() => setIsCreating(true)}
             >
@@ -152,8 +152,8 @@ export default function EmailMarketingPage() {
                       <Badge className={cn(
                         "rounded-full font-black text-[9px] uppercase tracking-wider px-3",
                         camp.status === "Active" ? "bg-green-100 text-green-600 border-green-200" :
-                        camp.status === "Draft" ? "bg-slate-100 text-slate-500 border-slate-200" :
-                        "bg-blue-100 text-blue-600 border-blue-200"
+                          camp.status === "Draft" ? "bg-slate-100 text-slate-500 border-slate-200" :
+                            "bg-blue-100 text-blue-600 border-blue-200"
                       )} variant="outline">
                         {camp.status}
                       </Badge>
@@ -251,7 +251,7 @@ export default function EmailMarketingPage() {
               <DialogDescription className="text-slate-400">Launch a new high-converting sequence in minutes.</DialogDescription>
             </DialogHeader>
           </div>
-          
+
           <div className="p-8 space-y-8 bg-white">
             <div className="grid gap-6">
               <div className="space-y-2">

@@ -42,13 +42,13 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
       const Icon = getServiceIcon(slug);
       const label = getServiceLabel(slug) || svc.service_name;
       if (!Icon) return null;
-      
+
       const routeSlug = getRouteSlug(slug);
-      
+
       if (slug === "whatsapp-automation" || slug === "whatsapp") {
-        return { 
-          title: label, 
-          icon: Icon, 
+        return {
+          title: label,
+          icon: Icon,
           path: getServicePath(slug),
           routeSlug,
           subItems: [
@@ -59,7 +59,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
           ]
         };
       }
-      
+
       return { title: label, icon: Icon, path: getServicePath(slug), routeSlug };
     })
     .filter(Boolean) as { title: string; icon: React.ElementType; path: string; routeSlug: string; subItems?: any[] }[];
@@ -165,7 +165,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/5 shadow-lg shadow-black/20 shrink-0 border border-white/10">
               <img src="/logo.png" alt="PIXORA" className="h-full w-full object-contain p-1" />
             </div>
-            
+
             {/* Brand text: always visible on mobile overlay, on md+ depends on collapsed */}
             <div
               className={cn(
@@ -183,7 +183,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
             <button onClick={onClose} className="md:hidden p-2 rounded-full hover:bg-white/10 transition-colors">
               <X className="h-5 w-5 text-white" />
             </button>
-            
+
             {/* Collapse button: on md+ when expanded */}
             {!collapsed && (
               <button
@@ -248,7 +248,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                     "h-5 w-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
                     active && !hasSubItems ? "text-white" : "text-slate-300 group-hover:text-white"
                   )} />
-                  
+
                   {/* Label: always on mobile, on md+ depends on collapsed */}
                   <span
                     className={cn(
@@ -268,7 +268,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                     )} />
                   )}
                   {active && !hasSubItems && (
-                    <div 
+                    <div
                       className={cn(
                         "ml-auto h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white] shrink-0 transition-opacity duration-300",
                         collapsed ? "md:hidden" : "md:block"
@@ -289,7 +289,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                       {item.subItems!.map((subItem) => {
                         const searchParamTab = new URLSearchParams(location.search).get('tab');
                         const subActive = searchParamTab ? subItem.path.includes(`tab=${searchParamTab}`) : false;
-                        
+
                         return (
                           <NavLink
                             key={subItem.path}
@@ -297,8 +297,8 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                             onClick={onClose}
                             className={cn(
                               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200",
-                              subActive 
-                                ? "text-white bg-white/10 shadow-sm" 
+                              subActive
+                                ? "text-white bg-white/10 shadow-sm"
                                 : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
                             )}
                           >
@@ -319,7 +319,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
         <div className="p-4 mt-auto">
           {/* Collapsed icon-only support button */}
           {collapsed && (
-            <button 
+            <button
               className="hidden md:flex w-full justify-center items-center p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
               title="Contact Support"
               onClick={() => navigate("/client/help")}
@@ -335,9 +335,9 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
           )}>
             <p className="text-xs font-semibold text-white mb-1">Need help?</p>
             <p className="text-[10px] text-slate-300 mb-3 leading-relaxed">Contact your manager for any assistance.</p>
-            <Button 
-              size="sm" 
-              variant="ghost" 
+            <Button
+              size="sm"
+              variant="ghost"
               className="w-full h-8 text-[11px] bg-primary/20 hover:bg-primary/30 text-white rounded-lg"
               onClick={() => navigate("/client/help")}
             >

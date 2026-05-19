@@ -663,12 +663,12 @@ function IVREditDialog({ open, onOpenChange, config, onSave }: {
               <Label className="text-sm font-semibold">System Instructions</Label>
               <Badge variant="outline" className="text-[10px]">AI Driven</Badge>
             </div>
-            <Textarea 
+            <Textarea
               value={local.systemPrompt}
               onChange={e => setLocal(prev => ({ ...prev, systemPrompt: e.target.value }))}
-              rows={8} 
+              rows={8}
               placeholder="Enter instructions for the AI..."
-              className="mt-1 font-mono text-sm leading-relaxed" 
+              className="mt-1 font-mono text-sm leading-relaxed"
             />
             <div className="flex items-center justify-between">
               <p className="text-[11px] text-muted-foreground">This prompt defines the personality and behavior of your AI receptionist.</p>
@@ -687,21 +687,21 @@ function IVREditDialog({ open, onOpenChange, config, onSave }: {
 
           {/* Advanced / Fallback */}
           <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-                <Label className="text-xs">Emergency Number</Label>
-                <Input value={local.emergencyNumber} onChange={e => setLocal(prev => ({ ...prev, emergencyNumber: e.target.value }))} placeholder="+1..." className="h-9" />
-             </div>
-             <div className="space-y-2">
-                <Label className="text-xs">After Hours Action</Label>
-                <Select value={local.afterHoursAction} onValueChange={v => setLocal(prev => ({ ...prev, afterHoursAction: v }))}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="voicemail">Take Voicemail</SelectItem>
-                    <SelectItem value="forward">Forward to Emergency</SelectItem>
-                    <SelectItem value="hangup">Hang Up</SelectItem>
-                  </SelectContent>
-                </Select>
-             </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Emergency Number</Label>
+              <Input value={local.emergencyNumber} onChange={e => setLocal(prev => ({ ...prev, emergencyNumber: e.target.value }))} placeholder="+1..." className="h-9" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">After Hours Action</Label>
+              <Select value={local.afterHoursAction} onValueChange={v => setLocal(prev => ({ ...prev, afterHoursAction: v }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="voicemail">Take Voicemail</SelectItem>
+                  <SelectItem value="forward">Forward to Emergency</SelectItem>
+                  <SelectItem value="hangup">Hang Up</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
         <DialogFooter className="mt-6">

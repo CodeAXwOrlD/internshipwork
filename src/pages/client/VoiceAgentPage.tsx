@@ -231,12 +231,12 @@ export default function VoiceAgentPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
-             <div className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-               <Bot className="h-6 w-6 md:h-7 md:w-7" style={{ color: primaryColor }} />
-             </div>
-             <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-               EcoAssist
-             </h1>
+            <div className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+              <Bot className="h-6 w-6 md:h-7 md:w-7" style={{ color: primaryColor }} />
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+              EcoAssist
+            </h1>
           </div>
           <p className="text-sm text-slate-500 font-medium ml-13 md:ml-15">
             Your neural voice agent is currently handling global operations.
@@ -313,16 +313,16 @@ export default function VoiceAgentPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200" vertical={false} />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
-                    interval={4} 
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    interval={4}
                     axisLine={false}
                     tickLine={false}
                   />
-                  <YAxis 
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
-                    allowDecimals={false} 
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    allowDecimals={false}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -371,7 +371,7 @@ export default function VoiceAgentPage() {
             {isActive ? (
               <div className="space-y-6 text-center">
                 <div className="relative mx-auto w-24 h-24">
-                  <div 
+                  <div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     className="absolute inset-0 rounded-full border-2 border-dashed border-primary/30"
@@ -385,7 +385,7 @@ export default function VoiceAgentPage() {
                   <p className="text-sm text-slate-500 leading-relaxed font-medium">Agent is intercepting streams and executing neural responses.</p>
                 </div>
                 <Button variant="outline" className="w-full border-sidebar-border/20 hover:bg-sidebar/5 hover:text-primary transition-colors rounded-xl font-bold" onClick={() => toggleActive(false)}>
-                   Emergency Suspension
+                  Emergency Suspension
                 </Button>
               </div>
             ) : (
@@ -400,8 +400,8 @@ export default function VoiceAgentPage() {
                   </p>
                 </div>
                 {workflowInstance && (
-                  <Button 
-                    className="w-full bg-primary text-white font-bold h-12 rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform" 
+                  <Button
+                    className="w-full bg-primary text-white font-bold h-12 rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform"
                     onClick={() => toggleActive(true)}
                   >
                     Bootstrap Agent
@@ -553,8 +553,8 @@ function StatsCard({
 }) {
   return (
     <Card className="bg-white/80 border-white/50 shadow-sm bg-opacity-95 hover:shadow-md hover:border-primary/30 transition-colors group overflow-hidden relative">
-      <div 
-        className="absolute -top-10 -right-10 h-24 w-24 rounded-full blur-2xl opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" 
+      <div
+        className="absolute -top-10 -right-10 h-24 w-24 rounded-full blur-2xl opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none"
         style={{ backgroundColor: color }}
       />
       <CardContent className="pt-6 relative z-10">
@@ -568,7 +568,7 @@ function StatsCard({
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{label}</p>
             <div className="flex items-baseline gap-2">
-               <p className="text-2xl font-black text-slate-900 tracking-tight">{value}</p>
+              <p className="text-2xl font-black text-slate-900 tracking-tight">{value}</p>
             </div>
             {subtext && <p className="text-[10px] text-slate-500 font-medium italic mt-1 leading-none">{subtext}</p>}
           </div>

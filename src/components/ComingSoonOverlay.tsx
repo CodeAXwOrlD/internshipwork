@@ -112,7 +112,7 @@ export default function ComingSoonOverlay({ title, description, features }: Comi
           {/* Call to Actions with click scale transformations */}
           <div className="flex gap-3 pt-2">
             <button
-              onClick={() => navigate("/client/dashboard")}
+              onClick={() => navigate("/client")}
               className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 active:scale-[0.96] transition-all duration-200 text-white font-bold rounded-2xl border border-white/10 hover:border-white/20 text-xs md:text-sm flex items-center justify-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" /> Go Back

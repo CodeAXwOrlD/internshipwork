@@ -48,18 +48,45 @@ interface CallLog {
   call_type: string | null;
 }
 
+const getAgentCacheFromStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    const cached = uid ? localStorage.getItem(`pixora_agent_cache_${uid}`) : null;
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+let agentPageCache = getAgentCacheFromStorage();
+
+const saveAgentCacheToStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    if (uid && agentPageCache) {
+      localStorage.setItem(`pixora_agent_cache_${uid}`, JSON.stringify(agentPageCache));
+    }
+  } catch {}
+};
+
 /* ─── Main Page ─── */
 export default function VoiceAgentPage() {
   const { client, assignedServices, isLoading: contextLoading, primaryColor } = useClient();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState<AgentStats | null>(null);
-  const [recentCalls, setRecentCalls] = useState<CallLog[]>([]);
-  const [chartData, setChartData] = useState<{ date: string; calls: number }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [serviceId, setServiceId] = useState<string | null>(null);
-  const [workflowInstance, setWorkflowInstance] = useState<any>(null);
+  const [stats, setStats] = useState<AgentStats | null>(agentPageCache?.stats || null);
+  const [recentCalls, setRecentCalls] = useState<CallLog[]>(agentPageCache?.recentCalls || []);
+  const [chartData, setChartData] = useState<{ date: string; calls: number }[]>(agentPageCache?.chartData || []);
+  const [isLoading, setIsLoading] = useState(!agentPageCache);
+  const [serviceId, setServiceId] = useState<string | null>(agentPageCache?.serviceId || null);
+  const [workflowInstance, setWorkflowInstance] = useState<any>(agentPageCache?.workflowInstance || null);
+
+  useEffect(() => {
+    if (client?.user_id) {
+      localStorage.setItem("last_user_id", client.user_id);
+    }
+  }, [client?.user_id]);
 
   const agentService = assignedServices.find(
     (s) => s.service_slug === "voice-agent" || s.service_slug === "ai-voice-agent"
@@ -94,7 +121,7 @@ export default function VoiceAgentPage() {
 
   const fetchAllData = useCallback(async () => {
     if (!client || !serviceId) return;
-    setIsLoading(true);
+    if (!agentPageCache) setIsLoading(true);
     await Promise.all([fetchStats(), fetchWorkflow(), fetchRecentCalls(), fetchChartData()]);
     setIsLoading(false);
   }, [client, serviceId]);
@@ -125,13 +152,17 @@ export default function VoiceAgentPage() {
     ).length;
     const totalDuration = calls.reduce((s, c) => s + (c.duration_seconds || 0), 0);
 
-    setStats({
+    const s = {
       totalCalls: calls.length,
       answeredCalls: answered,
       answerRate: calls.length > 0 ? Math.round((answered / calls.length) * 100) : 0,
       avgDuration: calls.length > 0 ? Math.round(totalDuration / calls.length) : 0,
       leadsCount: leadsRes.count || 0,
-    });
+    };
+    setStats(s);
+    if (!agentPageCache) agentPageCache = {} as any;
+    agentPageCache!.stats = s;
+    saveAgentCacheToStorage();
   }
 
   async function fetchWorkflow() {
@@ -143,6 +174,9 @@ export default function VoiceAgentPage() {
       .eq("service_id", serviceId)
       .maybeSingle();
     setWorkflowInstance(data);
+    if (!agentPageCache) agentPageCache = {} as any;
+    agentPageCache!.workflowInstance = data;
+    saveAgentCacheToStorage();
   }
 
   async function fetchRecentCalls() {
@@ -156,7 +190,11 @@ export default function VoiceAgentPage() {
       .eq("service_id", serviceId)
       .order("executed_at", { ascending: false })
       .limit(10);
-    setRecentCalls((data as CallLog[]) || []);
+    const calls = (data as CallLog[]) || [];
+    setRecentCalls(calls);
+    if (!agentPageCache) agentPageCache = {} as any;
+    agentPageCache!.recentCalls = calls;
+    saveAgentCacheToStorage();
   }
 
   async function fetchChartData() {
@@ -178,7 +216,11 @@ export default function VoiceAgentPage() {
       const d = format(new Date(c.executed_at), "MMM d");
       if (counts[d] !== undefined) counts[d]++;
     });
-    setChartData(Object.entries(counts).map(([date, calls]) => ({ date, calls })));
+    const chartArr = Object.entries(counts).map(([date, calls]) => ({ date, calls }));
+    setChartData(chartArr);
+    if (!agentPageCache) agentPageCache = {} as any;
+    agentPageCache!.chartData = chartArr;
+    saveAgentCacheToStorage();
   }
 
   const isActive =

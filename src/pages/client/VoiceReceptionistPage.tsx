@@ -117,19 +117,46 @@ const DEFAULT_CONFIG: ReceptionistConfig = {
   voicemailEnabled: true,
 };
 
+const getReceptionistCacheFromStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    const cached = uid ? localStorage.getItem(`pixora_receptionist_cache_${uid}`) : null;
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+let receptionistPageCache = getReceptionistCacheFromStorage();
+
+const saveReceptionistCacheToStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    if (uid && receptionistPageCache) {
+      localStorage.setItem(`pixora_receptionist_cache_${uid}`, JSON.stringify(receptionistPageCache));
+    }
+  } catch {}
+};
+
 /* ─── Main Page ─── */
 export default function VoiceReceptionistPage() {
   const { client, assignedServices, isLoading: contextLoading, primaryColor } = useClient();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [serviceId, setServiceId] = useState<string | null>(null);
-  const [workflowInstance, setWorkflowInstance] = useState<any>(null);
-  const [config, setConfig] = useState<ReceptionistConfig>(DEFAULT_CONFIG);
-  const [recentCalls, setRecentCalls] = useState<CallLog[]>([]);
-  const [callStats, setCallStats] = useState({ received: 0, handled: 0, transferred: 0 });
-  const [chartData, setChartData] = useState<{ date: string; calls: number }[]>([]);
+  const [isLoading, setIsLoading] = useState(!receptionistPageCache);
+  const [serviceId, setServiceId] = useState<string | null>(receptionistPageCache?.serviceId || null);
+  const [workflowInstance, setWorkflowInstance] = useState<any>(receptionistPageCache?.workflowInstance || null);
+  const [config, setConfig] = useState<ReceptionistConfig>(receptionistPageCache?.config || DEFAULT_CONFIG);
+  const [recentCalls, setRecentCalls] = useState<CallLog[]>(receptionistPageCache?.recentCalls || []);
+  const [callStats, setCallStats] = useState(receptionistPageCache?.callStats || { received: 0, handled: 0, transferred: 0 });
+  const [chartData, setChartData] = useState<{ date: string; calls: number }[]>(receptionistPageCache?.chartData || []);
+
+  useEffect(() => {
+    if (client?.user_id) {
+      localStorage.setItem("last_user_id", client.user_id);
+    }
+  }, [client?.user_id]);
 
   // Modals
   const [ivrEditOpen, setIvrEditOpen] = useState(false);
@@ -158,7 +185,7 @@ export default function VoiceReceptionistPage() {
 
   const fetchAllData = useCallback(async () => {
     if (!client || !serviceId) return;
-    setIsLoading(true);
+    if (!receptionistPageCache) setIsLoading(true);
     await Promise.all([fetchWorkflow(), fetchStats(), fetchRecentCalls(), fetchChartData()]);
     setIsLoading(false);
   }, [client, serviceId]);
@@ -176,6 +203,10 @@ export default function VoiceReceptionistPage() {
       if (data.custom_config && typeof data.custom_config === "object") {
         setConfig({ ...DEFAULT_CONFIG, ...(data.custom_config as any) });
       }
+      if (!receptionistPageCache) receptionistPageCache = {} as any;
+      receptionistPageCache!.workflowInstance = data;
+      receptionistPageCache!.config = { ...DEFAULT_CONFIG, ...(data.custom_config as any) };
+      saveReceptionistCacheToStorage();
     }
   }
 
@@ -200,6 +231,9 @@ export default function VoiceReceptionistPage() {
     }).length;
 
     setCallStats({ received: allCalls.length, handled, transferred });
+    if (!receptionistPageCache) receptionistPageCache = {} as any;
+    receptionistPageCache!.callStats = { received: allCalls.length, handled, transferred };
+    saveReceptionistCacheToStorage();
   }
 
   async function fetchRecentCalls() {
@@ -217,6 +251,9 @@ export default function VoiceReceptionistPage() {
       executed_at: d.executed_at || d.created_at || null
     }));
     setRecentCalls(mapped as CallLog[]);
+    if (!receptionistPageCache) receptionistPageCache = {} as any;
+    receptionistPageCache!.recentCalls = mapped;
+    saveReceptionistCacheToStorage();
   }
 
   async function fetchChartData() {
@@ -240,6 +277,9 @@ export default function VoiceReceptionistPage() {
       if (counts[d] !== undefined) counts[d]++;
     });
     setChartData(Object.entries(counts).map(([date, calls]) => ({ date, calls })));
+    if (!receptionistPageCache) receptionistPageCache = {} as any;
+    receptionistPageCache!.chartData = Object.entries(counts).map(([date, calls]) => ({ date, calls }));
+    saveReceptionistCacheToStorage();
   }
 
   const isActive = workflowInstance?.status === "active" && workflowInstance?.is_active;

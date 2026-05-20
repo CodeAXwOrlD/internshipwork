@@ -76,22 +76,62 @@ interface CallLog {
 
 import { useClient } from "@/contexts/ClientContext";
 
+const getInboundCacheFromStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    const cached = uid ? localStorage.getItem(`pixora_inbound_cache_${uid}`) : null;
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+let inboundPageCache = getInboundCacheFromStorage();
+
+const saveInboundCacheToStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    if (uid && inboundPageCache) {
+      localStorage.setItem(`pixora_inbound_cache_${uid}`, JSON.stringify(inboundPageCache));
+    }
+  } catch {}
+};
+
+const ensureInboundCache = () => {
+  if (!inboundPageCache) {
+    inboundPageCache = {
+      assignedNumbers: [],
+      logs: [],
+      selectedNumId: null,
+    };
+  }
+  return inboundPageCache;
+};
+
 export default function InboundServicePage() {
   const { toast } = useToast();
   const { client, isLoading: clientLoading } = useClient();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!inboundPageCache);
   const [logsLoading, setLogsLoading] = useState(false);
-  const [assignedNumbers, setAssignedNumbers] = useState<InboundNumber[]>([]);
-  const [selectedNumId, setSelectedNumId] = useState<string | null>(null);
-  const [logs, setLogs] = useState<CallLog[]>([]);
+  const [assignedNumbers, setAssignedNumbers] = useState<InboundNumber[]>(inboundPageCache?.assignedNumbers || []);
+  const [selectedNumId, setSelectedNumId] = useState<string | null>(inboundPageCache?.selectedNumId || null);
+  const [logs, setLogs] = useState<CallLog[]>(inboundPageCache?.logs || []);
   const [selectedLog, setSelectedLog] = useState<CallLog | null>(null);
   const [isMarkingLead, setIsMarkingLead] = useState(false);
+
+  useEffect(() => {
+    if (client?.user_id) {
+      localStorage.setItem("last_user_id", client.user_id);
+    }
+  }, [client?.user_id]);
 
   const leads = useMemo(() => logs.filter(l => l.is_lead), [logs]);
 
   const fetchNumbers = useCallback(async () => {
     if (!client?.user_id) return;
-    setLoading(true);
+    if (!inboundPageCache) {
+      setLoading(true);
+    }
     try {
       // 1. Fetch assigned numbers
       const { data: rawNums, error: numError } = await supabase
@@ -102,10 +142,15 @@ export default function InboundServicePage() {
       if (numError) throw numError;
 
       const nums = rawNums as InboundNumber[] | null;
-      setAssignedNumbers(nums || []);
+      const finalNums = nums || [];
+      setAssignedNumbers(finalNums);
+      ensureInboundCache().assignedNumbers = finalNums;
+      saveInboundCacheToStorage();
 
-      if (nums && nums.length > 0 && !selectedNumId) {
-        setSelectedNumId(nums[0].id);
+      if (finalNums.length > 0 && !selectedNumId) {
+        setSelectedNumId(finalNums[0].id);
+        ensureInboundCache().selectedNumId = finalNums[0].id;
+        saveInboundCacheToStorage();
       }
     } catch (error: any) {
       console.error("Error fetching inbound numbers:", error);
@@ -117,7 +162,9 @@ export default function InboundServicePage() {
 
   const fetchLogs = useCallback(async (numId: string) => {
     if (!numId || !client?.user_id) return;
-    setLogsLoading(true);
+    if (!inboundPageCache) {
+      setLogsLoading(true);
+    }
     try {
       const { data: rawLogData, error: logError } = await supabase
         .from("inbound_call_logs" as any)
@@ -133,6 +180,8 @@ export default function InboundServicePage() {
         created_at: d.created_at || d.started_at || null,
       }));
       setLogs(mapped);
+      ensureInboundCache().logs = mapped;
+      saveInboundCacheToStorage();
     } catch (error: any) {
       console.error("Error fetching inbound logs:", error);
       toast({
@@ -164,10 +213,15 @@ export default function InboundServicePage() {
 
       if (error) throw error;
 
-      // Update local state
-      setLogs(prev => prev.map(l => 
-        l.id === selectedLog.id ? { ...l, is_lead: newStatus } : l
-      ));
+      // Update local state and cache
+      setLogs(prev => {
+        const updated = prev.map(l =>
+          l.id === selectedLog.id ? { ...l, is_lead: newStatus } : l
+        );
+        ensureInboundCache().logs = updated;
+        saveInboundCacheToStorage();
+        return updated;
+      });
       
       setSelectedLog(prev => prev ? { ...prev, is_lead: newStatus } : null);
 

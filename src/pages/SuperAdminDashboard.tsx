@@ -1,22 +1,24 @@
 import { Routes, Route } from "react-router-dom";
 import SuperAdminLayout from "@/components/super-admin/SuperAdminLayout";
-import DashboardHome from "./super-admin/DashboardHome";
+import { lazy } from "react";
 
-import ServicesPage from "./super-admin/ServicesPage";
-import AdminsPage from "./super-admin/AdminsPage";
-import AdminDetailPage from "./super-admin/AdminDetailPage";
-import ClientsPage from "./super-admin/ClientsPage";
-import ClientDetailPage from "./super-admin/ClientDetailPage";
-import AnalyticsPage from "./super-admin/AnalyticsPage";
-import SettingsPage from "./super-admin/SettingsPage";
-import NotificationsPage from "./super-admin/NotificationsPage";
-import N8nControllerPage from "./super-admin/N8nControllerPage";
-import BotsPage from "./super-admin/BotsPage";
-import OutboundCampaignsPage from "./super-admin/OutboundCampaignsPage";
-import OutboundCallLogsPage from "./super-admin/OutboundCallLogsPage";
-import InboundNumbersPage from "./super-admin/InboundNumbersPage";
-import AdminWhatsAppBotsPage from "./admin/AdminWhatsAppBotsPage";
-import AdminWhatsAppPage from "./admin/AdminWhatsAppPage";
+// Lazy-loaded Super Admin pages
+const DashboardHome = lazy(() => import("./super-admin/DashboardHome"));
+const ServicesPage = lazy(() => import("./super-admin/ServicesPage"));
+const AdminsPage = lazy(() => import("./super-admin/AdminsPage"));
+const AdminDetailPage = lazy(() => import("./super-admin/AdminDetailPage"));
+const ClientsPage = lazy(() => import("./super-admin/ClientsPage"));
+const ClientDetailPage = lazy(() => import("./super-admin/ClientDetailPage"));
+const InboundNumbersPage = lazy(() => import("./super-admin/InboundNumbersPage"));
+const BotsPage = lazy(() => import("./super-admin/BotsPage"));
+const OutboundCampaignsPage = lazy(() => import("./super-admin/OutboundCampaignsPage"));
+const OutboundCallLogsPage = lazy(() => import("./super-admin/OutboundCallLogsPage"));
+const N8nControllerPage = lazy(() => import("./super-admin/N8nControllerPage"));
+const AnalyticsPage = lazy(() => import("./super-admin/AnalyticsPage"));
+const AdminWhatsAppPage = lazy(() => import("./admin/AdminWhatsAppPage"));
+const AdminWhatsAppBotsPage = lazy(() => import("./admin/AdminWhatsAppBotsPage"));
+const SettingsPage = lazy(() => import("./super-admin/SettingsPage"));
+const NotificationsPage = lazy(() => import("./super-admin/NotificationsPage"));
 
 export default function SuperAdminDashboard() {
   return (

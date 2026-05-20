@@ -47,6 +47,27 @@ interface ActivityItem {
   timestamp: string;
 }
 
+const getDashboardCacheFromStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    const cached = uid ? localStorage.getItem(`pixora_dashboard_cache_${uid}`) : null;
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+let dashboardCache = getDashboardCacheFromStorage();
+
+const saveDashboardCacheToStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    if (uid && dashboardCache) {
+      localStorage.setItem(`pixora_dashboard_cache_${uid}`, JSON.stringify(dashboardCache));
+    }
+  } catch {}
+};
+
 export default function ClientDashboardHome() {
   const { profile } = useAuth();
   const {
@@ -58,9 +79,15 @@ export default function ClientDashboardHome() {
   } = useClient();
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | null>(dashboardCache?.stats || null);
+  const [activities, setActivities] = useState<ActivityItem[]>(dashboardCache?.activities || []);
+  const [isLoading, setIsLoading] = useState(!dashboardCache);
+
+  useEffect(() => {
+    if (client?.user_id) {
+      localStorage.setItem("last_user_id", client.user_id);
+    }
+  }, [client?.user_id]);
 
   useEffect(() => {
     if (!client || contextLoading) return;
@@ -69,7 +96,9 @@ export default function ClientDashboardHome() {
 
   async function fetchDashboardData() {
     if (!client) return;
-    setIsLoading(true);
+    if (!dashboardCache) {
+      setIsLoading(true);
+    }
 
     const now = new Date();
     const monthStart = new Date(
@@ -118,12 +147,12 @@ export default function ClientDashboardHome() {
       0,
     );
 
-    setStats({
+    const newStats = {
       activeServices: assignedServices.length,
       totalUsage,
       leadsThisMonth: leadsRes.count || 0,
       activeCampaigns: listsRes.count || 0,
-    });
+    };
 
     const items: ActivityItem[] = [];
 
@@ -171,7 +200,16 @@ export default function ClientDashboardHome() {
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-    setActivities(items.slice(0, 10));
+    const slicedActivities = items.slice(0, 10);
+
+    dashboardCache = {
+      stats: newStats,
+      activities: slicedActivities,
+    };
+    saveDashboardCacheToStorage();
+
+    setStats(newStats);
+    setActivities(slicedActivities);
     setIsLoading(false);
   }
 

@@ -71,10 +71,10 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
       case "voice-telecaller": return 2; // Call Orbitor
       case "whatsapp": return 3;         // LeadNest
       case "social-media": return 4;     // Socialium
-      case "service-catalog": return 5;
-      case "analytics": return 6;
-      case "usage": return 7;
-      case "leads": return 8;
+      case "leads": return 5;            // Leads
+      case "service-catalog": return 6;
+      case "analytics": return 7;
+      case "usage": return 8;
       case "voice-agent": return 9;      // EcoAssist
       case "voice-receptionist": return 10;
       case "email-marketing": return 11;

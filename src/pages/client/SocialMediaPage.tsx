@@ -98,15 +98,53 @@ const POST_TYPES = [
   { key: "carousel", label: "Carousel", icon: <LayoutGrid className="h-4 w-4" /> },
 ];
 
+const getSocialCacheFromStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    const cached = uid ? localStorage.getItem(`pixora_social_cache_${uid}`) : null;
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+let socialPageCache = getSocialCacheFromStorage();
+
+const saveSocialCacheToStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    if (uid && socialPageCache) {
+      localStorage.setItem(`pixora_social_cache_${uid}`, JSON.stringify(socialPageCache));
+    }
+  } catch {}
+};
+
+const ensureSocialCache = () => {
+  if (!socialPageCache) {
+    socialPageCache = {
+      stats: null,
+      posts: [],
+      brands: [],
+    };
+  }
+  return socialPageCache;
+};
+
 /* ─── Main Component ─── */
 export default function SocialMediaPage() {
   const { client, assignedServices, isLoading: contextLoading } = useClient();
   const { toast } = useToast();
 
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [posts, setPosts] = useState<SocialPost[]>([]);
-  const [brands, setBrands] = useState<SocialBrand[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<Stats | null>(socialPageCache?.stats || null);
+  const [posts, setPosts] = useState<SocialPost[]>(socialPageCache?.posts || []);
+  const [brands, setBrands] = useState<SocialBrand[]>(socialPageCache?.brands || []);
+  const [isLoading, setIsLoading] = useState(!socialPageCache);
+
+  useEffect(() => {
+    if (client?.user_id) {
+      localStorage.setItem("last_user_id", client.user_id);
+    }
+  }, [client?.user_id]);
   
   const [viewMode, setViewMode] = useState<"calendar" | "list" | "brands" | "analytics" | "accounts">("calendar");
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -124,7 +162,9 @@ export default function SocialMediaPage() {
 
   const fetchAll = useCallback(async () => {
     if (!client) return;
-    setIsLoading(true);
+    if (!socialPageCache) {
+      setIsLoading(true);
+    }
     await Promise.all([fetchStats(), fetchPosts(), fetchBrands()]);
     setIsLoading(false);
   }, [client]);
@@ -136,7 +176,10 @@ export default function SocialMediaPage() {
       .select("*")
       .eq("client_id", client.id)
       .order("name");
-    setBrands((data as SocialBrand[]) || []);
+    const list = (data as SocialBrand[]) || [];
+    setBrands(list);
+    ensureSocialCache().brands = list;
+    saveSocialCacheToStorage();
   }
 
   async function fetchStats() {
@@ -164,12 +207,15 @@ export default function SocialMediaPage() {
       topPost = topRes.data[0] as SocialPost;
     }
 
-    setStats({
+    const computedStats = {
       scheduled: scheduledRes.count || 0,
       published: publishedRes.count || 0,
       totalEngagement: totalEng,
       topPost,
-    });
+    };
+    setStats(computedStats);
+    ensureSocialCache().stats = computedStats;
+    saveSocialCacheToStorage();
   }
 
   async function fetchPosts() {
@@ -180,7 +226,10 @@ export default function SocialMediaPage() {
       .eq("client_id", client.id)
       .order("created_at", { ascending: false })
       .limit(200);
-    setPosts((data as SocialPost[]) || []);
+    const postList = (data as SocialPost[]) || [];
+    setPosts(postList);
+    ensureSocialCache().posts = postList;
+    saveSocialCacheToStorage();
   }
 
   useEffect(() => {

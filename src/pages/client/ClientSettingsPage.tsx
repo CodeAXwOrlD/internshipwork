@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useClient } from "@/contexts/ClientContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -660,7 +661,7 @@ export default function ClientSettingsPage() {
             <CardContent className="space-y-2">
               <p className="text-sm text-muted-foreground">Billing is managed by <strong className="text-foreground">{admin?.company_name}</strong></p>
               <Button variant="outline" size="sm" asChild>
-                <a href="/client/usage">View Invoices <ArrowUpRight className="h-3 w-3 ml-1" /></a>
+                <Link to="/client/usage">View Invoices <ArrowUpRight className="h-3 w-3 ml-1" /></Link>
               </Button>
             </CardContent>
           </Card>

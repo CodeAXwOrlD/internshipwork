@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
@@ -69,7 +69,14 @@ function AdminLayoutInner() {
         style={{ height: "100dvh" }}
       >
         <div className="flex-1 min-h-0 p-4 md:p-6 overflow-y-auto">
-          <Outlet />
+          <Suspense fallback={
+            <div className="flex flex-1 flex-col items-center justify-center min-h-[400px]">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <p className="mt-2 text-sm text-slate-400">Loading feature...</p>
+            </div>
+          }>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
 

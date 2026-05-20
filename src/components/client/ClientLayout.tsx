@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { cn } from "@/lib/utils";
 import { Outlet, useLocation } from "react-router-dom";
 import ClientSidebar from "./ClientSidebar";
@@ -59,7 +59,14 @@ function ClientLayoutInner() {
           className="flex-1 flex flex-col overflow-y-auto pt-14 md:pt-16 pb-16 md:pb-0"
         >
           <div className="flex-1 flex flex-col p-4 md:p-5 lg:p-6 max-w-[1100px] lg:max-w-[1600px] mx-auto w-full">
-            <Outlet />
+            <Suspense fallback={
+              <div className="flex flex-1 flex-col items-center justify-center min-h-[400px]">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <p className="mt-2 text-sm text-slate-400">Loading feature...</p>
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

@@ -166,6 +166,44 @@ function LoadingSkeleton() {
 
 const PIE_COLORS = ["#25D366", "#22c55e", "#3b82f6", "#ef4444", "#a3a3a3"];
 
+// Cache to prevent loading skeleton flicker on tab switching
+const getWaCacheFromStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    const cached = uid ? localStorage.getItem(`pixora_wa_cache_${uid}`) : null;
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+let waPageCache = getWaCacheFromStorage();
+
+const saveWaCacheToStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    if (uid && waPageCache) {
+      localStorage.setItem(`pixora_wa_cache_${uid}`, JSON.stringify(waPageCache));
+    }
+  } catch {}
+};
+
+const ensureWaCache = () => {
+  if (!waPageCache) {
+    waPageCache = {
+      stats: null,
+      campaigns: [],
+      recentMessages: [],
+      templates: [],
+      analyticsData: [],
+      statusDistribution: [],
+      workflowInstance: null,
+      assignedBots: [],
+    };
+  }
+  return waPageCache;
+};
+
 /* ─── Main Component ─── */
 export default function WhatsAppPage() {
   const {
@@ -177,19 +215,25 @@ export default function WhatsAppPage() {
   } = useClient();
   const { toast } = useToast();
 
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [campaigns, setCampaigns] = useState<WACampaign[]>([]);
-  const [recentMessages, setRecentMessages] = useState<WAMessage[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<Stats | null>(waPageCache?.stats || null);
+  const [campaigns, setCampaigns] = useState<WACampaign[]>(waPageCache?.campaigns || []);
+  const [recentMessages, setRecentMessages] = useState<WAMessage[]>(waPageCache?.recentMessages || []);
+  const [templates, setTemplates] = useState<any[]>(waPageCache?.templates || []);
+  const [isLoading, setIsLoading] = useState(!waPageCache);
   const [isRefreshingTemplates, setIsRefreshingTemplates] = useState(false);
   const [campaignTab, setCampaignTab] = useState("all");
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [campaignWizardOpen, setCampaignWizardOpen] = useState(false);
-  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
-  const [statusDistribution, setStatusDistribution] = useState<any[]>([]);
-  const [workflowInstance, setWorkflowInstance] = useState<any>(null);
-  const [assignedBots, setAssignedBots] = useState<any[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<any[]>(waPageCache?.analyticsData || []);
+  const [statusDistribution, setStatusDistribution] = useState<any[]>(waPageCache?.statusDistribution || []);
+  const [workflowInstance, setWorkflowInstance] = useState<any>(waPageCache?.workflowInstance || null);
+  const [assignedBots, setAssignedBots] = useState<any[]>(waPageCache?.assignedBots || []);
+
+  useEffect(() => {
+    if (client?.user_id) {
+      localStorage.setItem("last_user_id", client.user_id);
+    }
+  }, [client?.user_id]);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
@@ -236,7 +280,7 @@ export default function WhatsAppPage() {
     ).length;
     const readCount = msgs.filter((m) => m.status === "read").length;
 
-    setStats({
+    const computedStats = {
       messagesSent: total,
       deliveryRate: total > 0 ? Math.round((delivered / total) * 100) : 0,
       delivered,
@@ -244,7 +288,10 @@ export default function WhatsAppPage() {
       readRate: total > 0 ? Math.round((readCount / total) * 100) : 0,
       readCount,
       activeCampaigns: campaignsRes.count || 0,
-    });
+    };
+    setStats(computedStats);
+    ensureWaCache().stats = computedStats;
+    saveWaCacheToStorage();
   }, [client]);
 
   const fetchCampaigns = useCallback(async () => {
@@ -254,7 +301,10 @@ export default function WhatsAppPage() {
       .select("*")
       .eq("client_id", client.id)
       .order("created_at", { ascending: false });
-    setCampaigns((data as WACampaign[]) || []);
+    const list = (data as WACampaign[]) || [];
+    setCampaigns(list);
+    ensureWaCache().campaigns = list;
+    saveWaCacheToStorage();
   }, [client]);
 
   const fetchWorkflow = useCallback(async () => {
@@ -266,6 +316,8 @@ export default function WhatsAppPage() {
       .eq("service_id", waService.service_id)
       .maybeSingle();
     setWorkflowInstance(data);
+    ensureWaCache().workflowInstance = data;
+    saveWaCacheToStorage();
   }, [client, waService]);
 
   const fetchAssignedBots = useCallback(async () => {
@@ -331,6 +383,8 @@ export default function WhatsAppPage() {
     }
 
     setAssignedBots(allBots);
+    ensureWaCache().assignedBots = allBots;
+    saveWaCacheToStorage();
     if (allBots.length > 0 && !selectedAppId) {
       setSelectedAppId(allBots[0].id);
     }
@@ -368,14 +422,16 @@ export default function WhatsAppPage() {
       camps?.forEach((c) => campaignMap.set(c.id, c.campaign_name));
     }
 
-    setRecentMessages(
-      data.map((m) => ({
-        ...m,
-        campaign_name: m.campaign_id
-          ? campaignMap.get(m.campaign_id)
-          : undefined,
-      })) as WAMessage[],
-    );
+    const mapped = data.map((m) => ({
+      ...m,
+      campaign_name: m.campaign_id
+        ? campaignMap.get(m.campaign_id)
+        : undefined,
+    })) as WAMessage[];
+
+    setRecentMessages(mapped);
+    ensureWaCache().recentMessages = mapped;
+    saveWaCacheToStorage();
   }, [client]);
 
   const fetchAnalytics = useCallback(async () => {
@@ -408,10 +464,10 @@ export default function WhatsAppPage() {
       if (m.status === "read") entry.read++;
       dayMap.set(day, entry);
     });
-    setAnalyticsData(
-      Array.from(dayMap.entries()).map(([day, v]) => ({ day, ...v })),
-    );
-
+    const analytics = Array.from(dayMap.entries()).map(([day, v]) => ({ day, ...v }));
+    setAnalyticsData(analytics);
+    ensureWaCache().analyticsData = analytics;
+    
     const statusMap = new Map<string, number>();
     data.forEach((m) => {
       statusMap.set(
@@ -419,9 +475,10 @@ export default function WhatsAppPage() {
         (statusMap.get(m.status || "queued") || 0) + 1,
       );
     });
-    setStatusDistribution(
-      Array.from(statusMap.entries()).map(([name, value]) => ({ name, value })),
-    );
+    const dist = Array.from(statusMap.entries()).map(([name, value]) => ({ name, value }));
+    setStatusDistribution(dist);
+    ensureWaCache().statusDistribution = dist;
+    saveWaCacheToStorage();
   }, [client]);
 
   const fetchTemplates = useCallback(
@@ -441,6 +498,8 @@ export default function WhatsAppPage() {
         }
         const data = await getWhatsAppTemplates(appId);
         setTemplates(data);
+        ensureWaCache().templates = data;
+        saveWaCacheToStorage();
       } catch (error) {
         console.error("Failed to fetch templates:", error);
       } finally {
@@ -501,7 +560,9 @@ export default function WhatsAppPage() {
 
   const fetchAll = useCallback(async () => {
     if (!client) return;
-    setIsLoading(true);
+    if (!waPageCache) {
+      setIsLoading(true);
+    }
     await Promise.all([
       fetchStats(),
       fetchCampaigns(),

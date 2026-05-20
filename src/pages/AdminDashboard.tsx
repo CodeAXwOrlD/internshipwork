@@ -1,20 +1,23 @@
 import { Routes, Route } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
-import AdminDashboardHome from "@/pages/admin/AdminDashboardHome";
-import WhiteLabelSettingsPage from "@/pages/admin/WhiteLabelSettingsPage";
-import ServiceCatalogPage from "@/pages/admin/ServiceCatalogPage";
-import MyPricingPage from "@/pages/admin/MyPricingPage";
-import MyClientsPage from "@/pages/admin/MyClientsPage";
-import AdminClientDetailPage from "@/pages/admin/AdminClientDetailPage";
-import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
-import AdminBillingPage from "@/pages/admin/AdminBillingPage";
-import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
-import VoiceAgentPage from "@/pages/admin/VoiceAgentPage";
-import AdminVoiceReceptionistPage from "@/pages/admin/AdminVoiceReceptionistPage";
-import AdminVoiceTelecallerPage from "@/pages/admin/AdminVoiceTelecallerPage";
-import AdminWhatsAppPage from "@/pages/admin/AdminWhatsAppPage";
-import AdminWhatsAppBotsPage from "@/pages/admin/AdminWhatsAppBotsPage";
-import AdminSocialMediaPage from "@/pages/admin/AdminSocialMediaPage";
+import { lazy } from "react";
+
+// Lazy-loaded Admin pages
+const AdminDashboardHome = lazy(() => import("@/pages/admin/AdminDashboardHome"));
+const WhiteLabelSettingsPage = lazy(() => import("@/pages/admin/WhiteLabelSettingsPage"));
+const ServiceCatalogPage = lazy(() => import("@/pages/admin/ServiceCatalogPage"));
+const MyPricingPage = lazy(() => import("@/pages/admin/MyPricingPage"));
+const MyClientsPage = lazy(() => import("@/pages/admin/MyClientsPage"));
+const AdminClientDetailPage = lazy(() => import("@/pages/admin/AdminClientDetailPage"));
+const AdminAnalyticsPage = lazy(() => import("@/pages/admin/AdminAnalyticsPage"));
+const AdminBillingPage = lazy(() => import("@/pages/admin/AdminBillingPage"));
+const AdminSettingsPage = lazy(() => import("@/pages/admin/AdminSettingsPage"));
+const VoiceAgentPage = lazy(() => import("@/pages/admin/VoiceAgentPage"));
+const AdminVoiceReceptionistPage = lazy(() => import("@/pages/admin/AdminVoiceReceptionistPage"));
+const AdminVoiceTelecallerPage = lazy(() => import("@/pages/admin/AdminVoiceTelecallerPage"));
+const AdminWhatsAppPage = lazy(() => import("@/pages/admin/AdminWhatsAppPage"));
+const AdminWhatsAppBotsPage = lazy(() => import("@/pages/admin/AdminWhatsAppBotsPage"));
+const AdminSocialMediaPage = lazy(() => import("@/pages/admin/AdminSocialMediaPage"));
 
 export default function AdminDashboard() {
   return (

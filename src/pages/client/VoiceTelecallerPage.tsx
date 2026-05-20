@@ -63,15 +63,54 @@ interface CallLog {
   contact_name: string | null;
 }
 
+const getTelecallerCacheFromStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    const cached = uid ? localStorage.getItem(`pixora_telecaller_cache_${uid}`) : null;
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+let telecallerPageCache = getTelecallerCacheFromStorage();
+
+const saveTelecallerCacheToStorage = () => {
+  try {
+    const uid = localStorage.getItem("last_user_id");
+    if (uid && telecallerPageCache) {
+      localStorage.setItem(`pixora_telecaller_cache_${uid}`, JSON.stringify(telecallerPageCache));
+    }
+  } catch {}
+};
+
+const ensureTelecallerCache = () => {
+  if (!telecallerPageCache) {
+    telecallerPageCache = {
+      stats: null,
+      campaigns: [],
+      recentCalls: [],
+      outboundLeads: [],
+    };
+  }
+  return telecallerPageCache;
+};
+
 export default function VoiceTelecallerPage() {
   const { client, assignedServices, isLoading: contextLoading, primaryColor } = useClient();
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState<CampaignStats | null>(null);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [recentCalls, setRecentCalls] = useState<CallLog[]>([]);
-  const [outboundLeads, setOutboundLeads] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<CampaignStats | null>(telecallerPageCache?.stats || null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(telecallerPageCache?.campaigns || []);
+  const [recentCalls, setRecentCalls] = useState<CallLog[]>(telecallerPageCache?.recentCalls || []);
+  const [outboundLeads, setOutboundLeads] = useState<any[]>(telecallerPageCache?.outboundLeads || []);
+  const [isLoading, setIsLoading] = useState(!telecallerPageCache);
+
+  useEffect(() => {
+    if (client?.user_id) {
+      localStorage.setItem("last_user_id", client.user_id);
+    }
+  }, [client?.user_id]);
   const [activeTab, setActiveTab] = useState("all");
   const [tipsVisible, setTipsVisible] = useState(() => {
     return localStorage.getItem("hide-telecaller-tips") !== "true";
@@ -143,12 +182,15 @@ export default function VoiceTelecallerPage() {
     const completed = calls.filter(c => c.call_status === "completed" || c.call_status === "answered").length;
     const total = calls.length;
 
-    setStats({
+    const calculatedStats = {
       totalCalls: total,
       completedCalls: completed,
       successRate: total > 0 ? Math.round((completed / total) * 100) : 0,
       leadsCount: leadsRes.count || 0,
-    });
+    };
+    setStats(calculatedStats);
+    ensureTelecallerCache().stats = calculatedStats;
+    saveTelecallerCacheToStorage();
   }, [client]);
 
   const fetchCampaigns = useCallback(async () => {
@@ -219,6 +261,8 @@ export default function VoiceTelecallerPage() {
         };
       });
       setCampaigns(mapped);
+      ensureTelecallerCache().campaigns = mapped;
+      saveTelecallerCacheToStorage();
     } catch (err) {
       console.error("fetchCampaigns error:", err);
     }
@@ -245,6 +289,8 @@ export default function VoiceTelecallerPage() {
         contact_name: d.name || d.phone
       }));
       setRecentCalls(mapped);
+      ensureTelecallerCache().recentCalls = mapped;
+      saveTelecallerCacheToStorage();
     }
   }, [client]);
 
@@ -284,6 +330,8 @@ export default function VoiceTelecallerPage() {
         };
       });
       setOutboundLeads(mapped as any[]);
+      ensureTelecallerCache().outboundLeads = mapped;
+      saveTelecallerCacheToStorage();
     } catch (err) {
       console.error("fetchOutboundLeads error:", err);
     }
@@ -291,7 +339,9 @@ export default function VoiceTelecallerPage() {
 
   const fetchAllData = useCallback(async () => {
     if (!client) return;
-    setIsLoading(true);
+    if (!telecallerPageCache) {
+      setIsLoading(true);
+    }
     await Promise.all([fetchBotStatus(), fetchStats(), fetchCampaigns(), fetchRecentCalls(), fetchOutboundLeads()]);
     setIsLoading(false);
   }, [client, fetchBotStatus, fetchStats, fetchCampaigns, fetchRecentCalls, fetchOutboundLeads]);

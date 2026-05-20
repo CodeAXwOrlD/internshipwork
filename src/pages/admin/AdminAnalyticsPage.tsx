@@ -556,16 +556,14 @@ export default function AdminAnalyticsPage() {
               {insights.map((item, i) => (
                 <div
                   key={i}
-                  className={`flex items-start gap-3 p-3 rounded-lg border ${
-                    item.type === "success" ? "border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900" :
-                    item.type === "warning" ? "border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900" :
-                    "border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900"
-                  }`}
+                  className={`flex items-start gap-3 p-3 rounded-lg border ${item.type === "success" ? "border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900" :
+                      item.type === "warning" ? "border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900" :
+                        "border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900"
+                    }`}
                 >
-                  <span className={`mt-0.5 ${
-                    item.type === "success" ? "text-green-600" :
-                    item.type === "warning" ? "text-yellow-600" : "text-blue-600"
-                  }`}>
+                  <span className={`mt-0.5 ${item.type === "success" ? "text-green-600" :
+                      item.type === "warning" ? "text-yellow-600" : "text-blue-600"
+                    }`}>
                     {item.icon}
                   </span>
                   <span className="text-sm">{item.text}</span>

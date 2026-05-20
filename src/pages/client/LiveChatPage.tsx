@@ -100,17 +100,34 @@ export default function LiveChatPage() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>("mock-1");
 
+  // Keep stable ref for live chat callbacks to prevent subscription useEffect re-triggering
+  const liveChatCallbacksRef = useRef({
+    fetchActiveSessions,
+    fetchChatMessages
+  });
+
   useEffect(() => {
-    fetchActiveSessions();
+    liveChatCallbacksRef.current = {
+      fetchActiveSessions,
+      fetchChatMessages
+    };
+  });
+
+  useEffect(() => {
+    liveChatCallbacksRef.current.fetchActiveSessions();
+
+    // Use a unique channel name to avoid collisions
+    const randomId = Math.random().toString(36).substring(2, 9);
+    const sessionChannelName = `sessions-channel-${randomId}`;
 
     // Subscribe to session changes
     const sessionChannel = supabase
-      .channel("sessions-channel")
+      .channel(sessionChannelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "ai_chat_sessions" },
         () => {
-          fetchActiveSessions();
+          liveChatCallbacksRef.current.fetchActiveSessions();
         },
       )
       .subscribe();
@@ -123,11 +140,15 @@ export default function LiveChatPage() {
   useEffect(() => {
     if (selectedChat) {
       setSessionId(selectedChat.id);
-      fetchChatMessages(selectedChat.id);
+      liveChatCallbacksRef.current.fetchChatMessages(selectedChat.id);
+
+      // Use a unique channel name to avoid collisions
+      const randomId = Math.random().toString(36).substring(2, 9);
+      const msgChannelName = `messages-${selectedChat.id}-${randomId}`;
 
       // Subscribe to messages for this active chat
       const msgChannel = supabase
-        .channel(`messages-${selectedChat.id}`)
+        .channel(msgChannelName)
         .on(
           "postgres_changes",
           {
@@ -137,7 +158,7 @@ export default function LiveChatPage() {
             filter: `session_id=eq.${selectedChat.id}`,
           },
           () => {
-            fetchChatMessages(selectedChat.id);
+            liveChatCallbacksRef.current.fetchChatMessages(selectedChat.id);
           },
         )
         .subscribe();
@@ -149,7 +170,7 @@ export default function LiveChatPage() {
       setChatMessages([]);
       setSessionId(null);
     }
-  }, [selectedChat]);
+  }, [selectedChat?.id]);
 
   useEffect(() => {
     if (scrollRef.current) {

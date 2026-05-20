@@ -67,7 +67,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   const fetchAll = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
-
+    
     // 1. Fetch client record
     const { data: clientData } = await supabase
       .from("clients")

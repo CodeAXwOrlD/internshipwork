@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/contexts/ClientContext";
 
@@ -45,44 +45,42 @@ export interface CatalogService {
 
 export function useServiceCatalog() {
   const { client } = useClient();
-  const [services, setServices] = useState<CatalogService[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    if (!client) return;
-    setLoading(true);
+  const { data: services = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ["service-catalog", client?.id],
+    queryFn: async () => {
+      if (!client) return [];
 
-    const [
-      { data: allServices },
-      { data: clientServices },
-      { data: plans },
-      { data: requests },
-    ] = await Promise.all([
-      supabase.from("services").select("id, name, slug, icon_url, description, category, features").eq("is_active", true).neq("slug", "ai-voice-receptionist").neq("slug", "voice-receptionist").order("name"),
-      supabase.from("client_services").select("service_id, is_active, usage_limit, usage_consumed, reset_period, plan_id").eq("client_id", client.id),
-      supabase.from("service_plans").select("id, plan_name, plan_tier, price_per_unit, monthly_price, usage_limit, features_included, is_active, service_id").eq("is_active", true),
-      supabase.from("service_purchase_requests").select("id, service_id, status, created_at").eq("client_id", client.id).in("status", ["pending"]),
-    ]);
+      const [
+        { data: allServices },
+        { data: clientServices },
+        { data: plans },
+        { data: requests },
+      ] = await Promise.all([
+        supabase.from("services").select("id, name, slug, icon_url, description, category, features").eq("is_active", true).neq("slug", "ai-voice-receptionist").neq("slug", "voice-receptionist").order("name"),
+        supabase.from("client_services").select("service_id, is_active, usage_limit, usage_consumed, reset_period, plan_id").eq("client_id", client.id),
+        supabase.from("service_plans").select("id, plan_name, plan_tier, price_per_unit, monthly_price, usage_limit, features_included, is_active, service_id").eq("is_active", true),
+        supabase.from("service_purchase_requests").select("id, service_id, status, created_at").eq("client_id", client.id).in("status", ["pending"]),
+      ]);
 
-    // A service is unlocked if the client has an active client_services record for it
-    const clientServiceMap = new Map(
-      (clientServices ?? []).filter((c) => c.is_active).map((c) => [c.service_id, c])
-    );
-    const plansByService = new Map<string, ServicePlan[]>();
-    (plans ?? []).forEach((p) => {
-      const existing = plansByService.get(p.service_id) || [];
-      existing.push(p);
-      plansByService.set(p.service_id, existing);
-    });
-    const requestMap = new Map(
-      (requests ?? []).map((r) => [r.service_id, r])
-    );
+      // A service is unlocked if the client has an active client_services record for it
+      const clientServiceMap = new Map(
+        (clientServices ?? []).filter((c) => c.is_active).map((c) => [c.service_id, c])
+      );
+      const plansByService = new Map<string, ServicePlan[]>();
+      (plans ?? []).forEach((p) => {
+        const existing = plansByService.get(p.service_id) || [];
+        existing.push(p);
+        plansByService.set(p.service_id, existing);
+      });
+      const requestMap = new Map(
+        (requests ?? []).map((r) => [r.service_id, r])
+      );
 
-    // Get plan names for client services
-    const planNameMap = new Map((plans ?? []).map(p => [p.id, p.plan_name]));
+      // Get plan names for client services
+      const planNameMap = new Map((plans ?? []).map(p => [p.id, p.plan_name]));
 
-    setServices(
-      (allServices ?? []).map((s) => {
+      return (allServices ?? []).map((s) => {
         const cs = clientServiceMap.get(s.id);
         const isUnlocked = !!cs;
         const request = requestMap.get(s.id);
@@ -105,12 +103,11 @@ export function useServiceCatalog() {
           reset_period: cs?.reset_period,
           available_plans: plansByService.get(s.id) || [],
         };
-      })
-    );
-    setLoading(false);
-  }, [client]);
+      });
+    },
+    enabled: !!client,
+  });
 
-  useEffect(() => { load(); }, [load]);
-
-  return { services, loading, refetch: load };
+  return { services, loading, refetch };
 }
+

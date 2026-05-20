@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,23 +47,34 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ClientAnalyticsPage() {
   const { client, primaryColor, isLoading: ctxLoading } = useClient();
   const [dateRange, setDateRange] = useState<DateRange>("30d");
-  const [loading, setLoading] = useState(true);
-  const [callLogs, setCallLogs] = useState<any[]>([]);
-  const [waMessages, setWaMessages] = useState<any[]>([]);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [socialPosts, setSocialPosts] = useState<any[]>([]);
-  const [campaigns, setCampaigns] = useState<any[]>([]);
 
   const { startDate, endDate, prevStartDate, prevEndDate } = useMemo(() => {
     const now = new Date();
     let start: Date, end: Date;
     switch (dateRange) {
-      case "7d": start = subDays(now, 7); end = now; break;
-      case "30d": start = subDays(now, 30); end = now; break;
-      case "90d": start = subDays(now, 90); end = now; break;
-      case "this_month": start = startOfMonth(now); end = now; break;
-      case "last_month": start = startOfMonth(subMonths(now, 1)); end = endOfMonth(subMonths(now, 1)); break;
-      default: start = subDays(now, 30); end = now;
+      case "7d":
+        start = subDays(now, 7);
+        end = now;
+        break;
+      case "30d":
+        start = subDays(now, 30);
+        end = now;
+        break;
+      case "90d":
+        start = subDays(now, 90);
+        end = now;
+        break;
+      case "this_month":
+        start = startOfMonth(now);
+        end = now;
+        break;
+      case "last_month":
+        start = startOfMonth(subMonths(now, 1));
+        end = endOfMonth(subMonths(now, 1));
+        break;
+      default:
+        start = subDays(now, 30);
+        end = now;
     }
     const days = differenceInDays(end, start);
     return {
@@ -73,37 +85,39 @@ export default function ClientAnalyticsPage() {
     };
   }, [dateRange]);
 
-  useEffect(() => {
-    if (!client || ctxLoading) return;
-    fetchData();
-  }, [client, ctxLoading, startDate, endDate]);
+  const { data: analyticsData = { callLogs: [], waMessages: [], leads: [], socialPosts: [], campaigns: [] }, isLoading: analyticsLoading } = useQuery({
+    queryKey: ["client-analytics", client?.id, startDate.toISOString(), endDate.toISOString()],
+    queryFn: async () => {
+      if (!client) return { callLogs: [], waMessages: [], leads: [], socialPosts: [], campaigns: [] };
+      const sd = startDate.toISOString();
+      const ed = endDate.toISOString();
 
-  async function fetchData() {
-    if (!client) return;
-    setLoading(true);
-    const sd = startDate.toISOString();
-    const ed = endDate.toISOString();
+      const [callsRes, waRes, leadsRes, socialRes, campRes] = await Promise.all([
+        supabase.from("call_logs").select("*").eq("client_id", client.id)
+          .gte("executed_at", sd).lte("executed_at", ed).order("executed_at"),
+        supabase.from("whatsapp_messages").select("*").eq("client_id", client.id)
+          .gte("sent_at", sd).lte("sent_at", ed).order("sent_at"),
+        supabase.from("leads").select("*").eq("client_id", client.id)
+          .gte("created_at", sd).lte("created_at", ed).order("created_at"),
+        supabase.from("social_media_posts").select("*").eq("client_id", client.id)
+          .gte("created_at", sd).lte("created_at", ed),
+        supabase.from("outbound_contact_lists").select("*").eq("owner_user_id", client.user_id)
+          .gte("created_at", sd).lte("created_at", ed).order("created_at"),
+      ]);
 
-    const [callsRes, waRes, leadsRes, socialRes, campRes] = await Promise.all([
-      supabase.from("call_logs").select("*").eq("client_id", client.id)
-        .gte("executed_at", sd).lte("executed_at", ed).order("executed_at"),
-      supabase.from("whatsapp_messages").select("*").eq("client_id", client.id)
-        .gte("sent_at", sd).lte("sent_at", ed).order("sent_at"),
-      supabase.from("leads").select("*").eq("client_id", client.id)
-        .gte("created_at", sd).lte("created_at", ed).order("created_at"),
-      supabase.from("social_media_posts").select("*").eq("client_id", client.id)
-        .gte("created_at", sd).lte("created_at", ed),
-      supabase.from("outbound_contact_lists").select("*").eq("owner_user_id", client.user_id)
-        .gte("created_at", sd).lte("created_at", ed).order("created_at"),
-    ]);
+      return {
+        callLogs: callsRes.data || [],
+        waMessages: waRes.data || [],
+        leads: leadsRes.data || [],
+        socialPosts: socialRes.data || [],
+        campaigns: campRes.data || [],
+      };
+    },
+    enabled: !!client && !ctxLoading,
+  });
 
-    setCallLogs(callsRes.data || []);
-    setWaMessages(waRes.data || []);
-    setLeads(leadsRes.data || []);
-    setSocialPosts(socialRes.data || []);
-    setCampaigns(campRes.data || []);
-    setLoading(false);
-  }
+  const { callLogs, waMessages, leads, socialPosts, campaigns } = analyticsData;
+  const loading = analyticsLoading;
 
   // Derived metrics
   const totalCalls = callLogs.length;

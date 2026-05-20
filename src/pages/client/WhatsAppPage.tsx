@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -185,7 +185,7 @@ const saveWaCacheToStorage = () => {
     if (uid && waPageCache) {
       localStorage.setItem(`pixora_wa_cache_${uid}`, JSON.stringify(waPageCache));
     }
-  } catch {}
+  } catch { }
 };
 
 const ensureWaCache = () => {
@@ -214,6 +214,8 @@ export default function WhatsAppPage() {
     refetchClient,
   } = useClient();
   const { toast } = useToast();
+  const location = useLocation();
+  const isActiveRoute = location.pathname.startsWith("/client/whatsapp");
 
   const [stats, setStats] = useState<Stats | null>(waPageCache?.stats || null);
   const [campaigns, setCampaigns] = useState<WACampaign[]>(waPageCache?.campaigns || []);
@@ -467,7 +469,7 @@ export default function WhatsAppPage() {
     const analytics = Array.from(dayMap.entries()).map(([day, v]) => ({ day, ...v }));
     setAnalyticsData(analytics);
     ensureWaCache().analyticsData = analytics;
-    
+
     const statusMap = new Map<string, number>();
     data.forEach((m) => {
       statusMap.set(
@@ -594,11 +596,28 @@ export default function WhatsAppPage() {
     fetchAll();
   }, [client, contextLoading, waService, fetchAll]);
 
+  // Keep a stable ref for WhatsApp callbacks to prevent subscription useEffect from re-triggering
+  const waCallbacksRef = useRef({
+    fetchCampaigns,
+    fetchStats
+  });
+
+  useEffect(() => {
+    waCallbacksRef.current = {
+      fetchCampaigns,
+      fetchStats
+    };
+  });
+
   // Realtime for campaigns
   useEffect(() => {
     if (!client) return;
+
+    const randomId = Math.random().toString(36).substring(2, 9);
+    const channelName = `wa-campaigns-${client.id}-${randomId}`;
+
     const channel = supabase
-      .channel("wa-campaigns")
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
@@ -608,15 +627,15 @@ export default function WhatsAppPage() {
           filter: `client_id=eq.${client.id}`,
         },
         () => {
-          fetchCampaigns();
-          fetchStats();
+          waCallbacksRef.current.fetchCampaigns();
+          waCallbacksRef.current.fetchStats();
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [client, fetchCampaigns, fetchStats]);
+  }, [client?.id]);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -629,6 +648,7 @@ export default function WhatsAppPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (!isActiveRoute) return;
     localStorage.setItem("leadnest_active_tab", mainTab);
     const urlTab = searchParams.get("tab");
     if (urlTab !== mainTab) {
@@ -636,13 +656,14 @@ export default function WhatsAppPage() {
       newParams.set("tab", mainTab);
       setSearchParams(newParams, { replace: true });
     }
-  }, [mainTab, searchParams, setSearchParams]);
+  }, [isActiveRoute, mainTab, searchParams, setSearchParams]);
 
   const handleTabChange = useCallback((tab: string) => {
+    if (!isActiveRoute) return;
     const newParams = new URLSearchParams(searchParams);
     newParams.set("tab", tab);
     setSearchParams(newParams);
-  }, [searchParams, setSearchParams]);
+  }, [isActiveRoute, searchParams, setSearchParams]);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -1714,27 +1735,27 @@ function CampaignCard({
               })}
             </p>
           </div>
-            <div className="flex items-center gap-2">
-              <CampaignStatusBadge status={campaign.status} />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:bg-emerald-50 hover:text-emerald-600"
-                onClick={() => onView(campaign)}
-                aria-label={`View campaign ${campaign.campaign_name}`}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:bg-red-50 hover:text-red-600"
-                onClick={() => onDelete(campaign)}
-                aria-label={`Delete campaign ${campaign.campaign_name}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <CampaignStatusBadge status={campaign.status} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-emerald-50 hover:text-emerald-600"
+              onClick={() => onView(campaign)}
+              aria-label={`View campaign ${campaign.campaign_name}`}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-red-50 hover:text-red-600"
+              onClick={() => onDelete(campaign)}
+              aria-label={`Delete campaign ${campaign.campaign_name}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <Progress value={progress} className="h-2 mb-2" />
         <div className="flex gap-4 text-[10px] text-muted-foreground">

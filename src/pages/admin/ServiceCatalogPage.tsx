@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -66,10 +67,6 @@ const UNIT_LABELS: Record<string, string> = {
 
 export default function ServiceCatalogPage() {
   const { admin, primaryColor } = useAdmin();
-  const [services, setServices] = useState<Service[]>([]);
-  const [adminPricing, setAdminPricing] = useState<Map<string, AdminPricing>>(new Map());
-  const [clientCounts, setClientCounts] = useState<Map<string, number>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set());
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
@@ -86,36 +83,39 @@ export default function ServiceCatalogPage() {
   const [plans, setPlans] = useState<ServicePlan[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
 
-  useEffect(() => {
-    if (admin) fetchData();
-  }, [admin]);
+  const { data: catalogData, isLoading, refetch } = useQuery({
+    queryKey: ["admin-services-catalog", admin?.id],
+    queryFn: async () => {
+      if (!admin) return { services: [], adminPricing: new Map<string, AdminPricing>(), clientCounts: new Map<string, number>() };
 
-  async function fetchData() {
-    setIsLoading(true);
-    const [servicesRes, pricingRes] = await Promise.all([
-      supabase.from("services").select("*").eq("is_active", true).neq("slug", "ai-voice-receptionist").neq("slug", "voice-receptionist").order("category").order("name"),
-      supabase.from("admin_pricing").select("*").eq("admin_id", admin!.id),
-    ]);
+      const [servicesRes, pricingRes] = await Promise.all([
+        supabase.from("services").select("*").eq("is_active", true).neq("slug", "ai-voice-receptionist").neq("slug", "voice-receptionist").order("category").order("name"),
+        supabase.from("admin_pricing").select("*").eq("admin_id", admin.id),
+      ]);
 
-    const svcList = (servicesRes.data || []) as Service[];
-    setServices(svcList);
+      const servicesList = (servicesRes.data || []) as Service[];
 
-    const pMap = new Map<string, AdminPricing>();
-    pricingRes.data?.forEach((p: any) => pMap.set(p.service_id, p));
-    setAdminPricing(pMap);
+      const pMap = new Map<string, AdminPricing>();
+      pricingRes.data?.forEach((p: any) => pMap.set(p.service_id, p));
 
-    // Fetch client counts per service
-    const { data: cs } = await supabase
-      .from("client_services")
-      .select("service_id, client_id")
-      .in("client_id", (await supabase.from("clients").select("id").eq("admin_id", admin!.id)).data?.map(c => c.id) || [])
-      .eq("is_active", true);
+      // Fetch client counts per service
+      const { data: cs } = await supabase
+        .from("client_services")
+        .select("service_id, client_id")
+        .in("client_id", (await supabase.from("clients").select("id").eq("admin_id", admin.id)).data?.map(c => c.id) || [])
+        .eq("is_active", true);
 
-    const countMap = new Map<string, number>();
-    cs?.forEach(r => countMap.set(r.service_id, (countMap.get(r.service_id) || 0) + 1));
-    setClientCounts(countMap);
-    setIsLoading(false);
-  }
+      const countMap = new Map<string, number>();
+      cs?.forEach(r => countMap.set(r.service_id, (countMap.get(r.service_id) || 0) + 1));
+
+      return { services: servicesList, adminPricing: pMap, clientCounts: countMap };
+    },
+    enabled: !!admin,
+  });
+
+  const services = catalogData?.services || [];
+  const adminPricing = catalogData?.adminPricing || new Map<string, AdminPricing>();
+  const clientCounts = catalogData?.clientCounts || new Map<string, number>();
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: services.length };
@@ -195,7 +195,7 @@ export default function ServiceCatalogPage() {
 
       toast({ title: `Pricing updated for ${pricingService.name}` });
       setPricingService(null);
-      fetchData();
+      refetch();
     } catch (err: any) {
       toast({ title: "Error saving pricing", description: err.message, variant: "destructive" });
     } finally {

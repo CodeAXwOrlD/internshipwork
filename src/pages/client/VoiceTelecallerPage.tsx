@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -351,33 +351,56 @@ export default function VoiceTelecallerPage() {
     fetchAllData();
   }, [client, fetchAllData]);
 
+  // Keep a stable ref for all callbacks to prevent subscription useEffect from re-triggering
+  const telecallerCallbacksRef = useRef({
+    fetchAllData,
+    fetchCampaigns,
+    fetchRecentCalls,
+    fetchStats,
+    fetchOutboundLeads
+  });
+
+  useEffect(() => {
+    telecallerCallbacksRef.current = {
+      fetchAllData,
+      fetchCampaigns,
+      fetchRecentCalls,
+      fetchStats,
+      fetchOutboundLeads
+    };
+  });
+
   // Realtime subscription for campaigns and logs
   useEffect(() => {
     if (!client) return;
 
+    // Use a unique channel name to avoid collisions
+    const randomId = Math.random().toString(36).substring(2, 9);
+    const channelName = `telecaller-realtime-${client.user_id}-${randomId}`;
+
     const channel = supabase
-      .channel("telecaller-realtime")
+      .channel(channelName)
       .on("postgres_changes", {
         event: "*",
         schema: "public",
         table: "outbound_contact_lists",
         filter: `owner_user_id=eq.${client.user_id}`,
-      }, () => fetchAllData())
+      }, () => telecallerCallbacksRef.current.fetchAllData())
       .on("postgres_changes", {
         event: "*",
         schema: "public",
         table: "outbound_scheduled_calls",
         filter: `owner_user_id=eq.${client.user_id}`,
-      }, () => fetchCampaigns())
+      }, () => telecallerCallbacksRef.current.fetchCampaigns())
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",
         table: "outbound_call_logs",
         filter: `owner_user_id=eq.${client.user_id}`,
       }, () => {
-        fetchCampaigns();
-        fetchRecentCalls();
-        fetchStats();
+        telecallerCallbacksRef.current.fetchCampaigns();
+        telecallerCallbacksRef.current.fetchRecentCalls();
+        telecallerCallbacksRef.current.fetchStats();
       })
       .on("postgres_changes", {
         event: "*",
@@ -385,13 +408,15 @@ export default function VoiceTelecallerPage() {
         table: "outbound_leads",
         filter: `owner_user_id=eq.${client.user_id}`,
       }, () => {
-        fetchOutboundLeads();
-        fetchStats();
+        telecallerCallbacksRef.current.fetchOutboundLeads();
+        telecallerCallbacksRef.current.fetchStats();
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [client, fetchAllData, fetchCampaigns, fetchRecentCalls, fetchStats, fetchOutboundLeads]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [client?.user_id]);
 
   if (contextLoading) {
     return <LoadingSkeleton />;

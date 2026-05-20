@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,23 +83,44 @@ export default function ClientNotificationsPage() {
     if (page > 0) fetchNotifications();
   }, [page]);
 
-  // Realtime
+  // Keep a stable ref for notification callbacks
+  const notifCallbacksRef = useRef({
+    onInsert: (payload: any) => {
+      const n = payload.new as Notification;
+      setNotifications((prev) => [n, ...prev]);
+      setTotalCount((c) => c + 1);
+      toast({ title: n.title, description: n.message });
+    }
+  });
+
   useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("client-notifs-page-rt")
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public", table: "notifications",
-        filter: `user_id=eq.${user.id}`,
-      }, (payload) => {
+    notifCallbacksRef.current = {
+      onInsert: (payload: any) => {
         const n = payload.new as Notification;
         setNotifications((prev) => [n, ...prev]);
         setTotalCount((c) => c + 1);
         toast({ title: n.title, description: n.message });
-      })
+      }
+    };
+  });
+
+  // Realtime
+  useEffect(() => {
+    if (!user) return;
+    const randomId = Math.random().toString(36).substring(2, 9);
+    const channelName = `client-notifs-page-rt-${user.id}-${randomId}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "notifications",
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => notifCallbacksRef.current.onInsert(payload))
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, toast]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const toggleRead = async (id: string, currentRead: boolean) => {
     const newRead = !currentRead;

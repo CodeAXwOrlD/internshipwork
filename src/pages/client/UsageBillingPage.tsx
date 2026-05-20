@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useClient } from "@/contexts/ClientContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -57,9 +58,7 @@ interface Invoice {
 export default function UsageBillingPage() {
   const { client, admin, assignedServices, isLoading: clientLoading } = useClient();
   const [dateRange, setDateRange] = useState<DateRange>("this_month");
-  const [usageRecords, setUsageRecords] = useState<UsageRecord[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [activeChart, setActiveChart] = useState("daily");
   const [invoiceModal, setInvoiceModal] = useState<Invoice | null>(null);
   const [limitDialog, setLimitDialog] = useState(false);
@@ -80,33 +79,22 @@ export default function UsageBillingPage() {
     return { rangeStart: startOfMonth(now), rangeEnd: endOfMonth(now) };
   }, [dateRange]);
 
-  useEffect(() => {
-    if (!client) return;
-    fetchData();
-  }, [client, rangeStart, rangeEnd]);
-
-  const fetchData = async () => {
-    if (!client) return;
-    setLoading(true);
-
-    const [usageRes, invoiceRes] = await Promise.all([
-      supabase
+  const { data: usageRecords = [], isLoading: usageLoading } = useQuery({
+    queryKey: ["client-usage-records", client?.id, rangeStart.toISOString(), rangeEnd.toISOString()],
+    queryFn: async () => {
+      if (!client) return [];
+      const { data, error } = await supabase
         .from("usage_tracking")
         .select("*")
         .eq("client_id", client.id)
         .gte("recorded_at", rangeStart.toISOString())
         .lte("recorded_at", rangeEnd.toISOString())
-        .order("recorded_at", { ascending: false }),
-      supabase
-        .from("invoices")
-        .select("*")
-        .eq("client_id", client.id)
-        .order("invoice_date", { ascending: false })
-        .limit(10),
-    ]);
+        .order("recorded_at", { ascending: false });
 
-    if (usageRes.data) {
-      const serviceIds = [...new Set(usageRes.data.map(u => u.service_id).filter(Boolean))];
+      if (error) throw error;
+      if (!data) return [];
+
+      const serviceIds = [...new Set(data.map(u => u.service_id).filter(Boolean))];
       let serviceMap = new Map<string, string>();
       if (serviceIds.length > 0) {
         const { data: svcs } = await supabase
@@ -115,16 +103,33 @@ export default function UsageBillingPage() {
           .in("id", serviceIds as string[]);
         svcs?.forEach(s => serviceMap.set(s.id, s.name));
       }
-      setUsageRecords(
-        usageRes.data.map(u => ({
-          ...u,
-          service_name: u.service_id ? serviceMap.get(u.service_id) || "Unknown" : "General",
-        }))
-      );
-    }
-    if (invoiceRes.data) setInvoices(invoiceRes.data as Invoice[]);
-    setLoading(false);
-  };
+
+      return data.map(u => ({
+        ...u,
+        service_name: u.service_id ? serviceMap.get(u.service_id) || "Unknown" : "General",
+      })) as UsageRecord[];
+    },
+    enabled: !!client,
+  });
+
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ["client-invoices", client?.id],
+    queryFn: async () => {
+      if (!client) return [];
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*")
+        .eq("client_id", client.id)
+        .order("invoice_date", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      return (data || []) as Invoice[];
+    },
+    enabled: !!client,
+  });
+
+  const loading = usageLoading || invoicesLoading;
 
   const totalUsage = usageRecords.reduce((s, r) => s + (r.quantity || 0), 0);
   const totalCost = usageRecords.reduce((s, r) => s + (r.total_cost || 0), 0);

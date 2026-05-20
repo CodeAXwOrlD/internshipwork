@@ -359,84 +359,83 @@ export default function AIConfigurationPage() {
         {/* AI Brain Tab */}
         {activeTab === "brain" && (
           <TabsContent value="brain" key="brain" forceMount>
-              <div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="grid gap-6 md:grid-cols-3"
-              >
-                {/* Templates column */}
-                <div className="space-y-4">
-                  <Card className="bg-white/95 border-primary/10 shadow-sm rounded-2xl overflow-hidden">
-                    <CardHeader className="p-4 border-b">
-                      <CardTitle className="text-sm font-bold flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" /> Templates
-                      </CardTitle>
-                      <CardDescription className="text-xs text-slate-500">
-                        Pick a starting personality for your assistant.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-3 space-y-3">
-                      {templates.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => {
-                            setSystemPrompt(t.prompt);
-                            setTemperature(t.temp);
-                          }}
-                          className={`w-full text-left p-3 rounded-lg transition-shadow border ${
-                            systemPrompt === t.prompt
-                              ? "border-primary bg-primary/5 shadow"
-                              : "border-slate-100 bg-white/50 hover:border-primary/20"
+            <div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="grid gap-6 md:grid-cols-3"
+            >
+              {/* Templates column */}
+              <div className="space-y-4">
+                <Card className="bg-white/95 border-primary/10 shadow-sm rounded-2xl overflow-hidden">
+                  <CardHeader className="p-4 border-b">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" /> Templates
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500">
+                      Pick a starting personality for your assistant.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-3 space-y-3">
+                    {templates.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setSystemPrompt(t.prompt);
+                          setTemperature(t.temp);
+                        }}
+                        className={`w-full text-left p-3 rounded-lg transition-shadow border ${systemPrompt === t.prompt
+                            ? "border-primary bg-primary/5 shadow"
+                            : "border-slate-100 bg-white/50 hover:border-primary/20"
                           }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="text-sm font-semibold text-slate-800">{t.name}</div>
-                              <div className="text-xs text-slate-500">{t.description}</div>
-                            </div>
-                            <div className="text-[11px] text-slate-400">Temp {t.temp}</div>
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-slate-800">{t.name}</div>
+                            <div className="text-xs text-slate-500">{t.description}</div>
                           </div>
-                        </button>
-                      ))}
-                    </CardContent>
-                  </Card>
+                          <div className="text-[11px] text-slate-400">Temp {t.temp}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </CardContent>
+                </Card>
 
-                  <Card className="bg-white/95 border-primary/10 shadow-sm rounded-2xl overflow-hidden">
-                    <CardHeader className="p-4 border-b">
-                      <CardTitle className="text-sm font-bold flex items-center gap-2">
-                        <Settings2 className="w-4 h-4 text-primary" /> Utilities
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 space-y-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(systemPrompt || "");
-                          toast.success("System prompt copied to clipboard");
-                        }}
-                      >
-                        Copy Prompt
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          setSystemPrompt("");
-                          setTemperature(0.7);
-                          toast.success("Reset to defaults (UI only)");
-                        }}
-                      >
-                        Reset UI
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
+                <Card className="bg-white/95 border-primary/10 shadow-sm rounded-2xl overflow-hidden">
+                  <CardHeader className="p-4 border-b">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                      <Settings2 className="w-4 h-4 text-primary" /> Utilities
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(systemPrompt || "");
+                        toast.success("System prompt copied to clipboard");
+                      }}
+                    >
+                      Copy Prompt
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setSystemPrompt("");
+                        setTemperature(0.7);
+                        toast.success("Reset to defaults (UI only)");
+                      }}
+                    >
+                      Reset UI
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
 
-                <Card className="bg-white/95 border-primary/20 shadow-xl shadow-primary/5 rounded-3xl overflow-hidden md:col-span-2">
+              <Card className="bg-white/95 border-primary/20 shadow-xl shadow-primary/5 rounded-3xl overflow-hidden md:col-span-2">
                 <CardHeader className="border-b border-sidebar-border/5 pb-6">
                   <CardTitle className="text-xl font-bold flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-primary" />
@@ -461,17 +460,15 @@ export default function AIConfigurationPage() {
                   <div className="grid gap-4 md:grid-cols-3">
                     {/* Strict & Precise */}
                     <div
-                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${
-                        temperature === 0.2
+                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${temperature === 0.2
                           ? "bg-primary border-primary shadow-lg shadow-primary/20"
                           : "bg-slate-50 border-slate-100 hover:border-primary/20 hover:bg-slate-50/80"
-                      }`}
+                        }`}
                       onClick={() => setTemperature(0.2)}
                     >
                       <Label
-                        className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${
-                          temperature === 0.2 ? "text-white" : "text-slate-700"
-                        }`}
+                        className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${temperature === 0.2 ? "text-white" : "text-slate-700"
+                          }`}
                       >
                         Strict & Precise
                       </Label>
@@ -484,11 +481,10 @@ export default function AIConfigurationPage() {
                         />
                       </div>
                       <div
-                        className={`flex justify-between mt-2 text-[10px] font-bold ${
-                          temperature === 0.2
+                        className={`flex justify-between mt-2 text-[10px] font-bold ${temperature === 0.2
                             ? "text-white/80"
                             : "text-slate-400"
-                        }`}
+                          }`}
                       >
                         <span>
                           {temperature === 0.2 ? "★ Selected" : "Precise"}
@@ -498,17 +494,15 @@ export default function AIConfigurationPage() {
 
                     {/* Balanced & Professional */}
                     <div
-                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${
-                        temperature === 0.6
+                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${temperature === 0.6
                           ? "bg-slate-800 border-slate-800 shadow-lg shadow-slate-800/20"
                           : "bg-slate-50 border-slate-100 hover:border-slate-300 hover:bg-slate-50/80"
-                      }`}
+                        }`}
                       onClick={() => setTemperature(0.6)}
                     >
                       <Label
-                        className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${
-                          temperature === 0.6 ? "text-white" : "text-slate-700"
-                        }`}
+                        className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${temperature === 0.6 ? "text-white" : "text-slate-700"
+                          }`}
                       >
                         Balanced & Professional
                       </Label>
@@ -521,11 +515,10 @@ export default function AIConfigurationPage() {
                         />
                       </div>
                       <div
-                        className={`flex justify-between mt-2 text-[10px] font-bold ${
-                          temperature === 0.6
+                        className={`flex justify-between mt-2 text-[10px] font-bold ${temperature === 0.6
                             ? "text-white/80"
                             : "text-slate-400"
-                        }`}
+                          }`}
                       >
                         <span>
                           {temperature === 0.6 ? "★ Selected" : "Professional"}
@@ -535,17 +528,15 @@ export default function AIConfigurationPage() {
 
                     {/* Creative & Warm */}
                     <div
-                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${
-                        temperature === 0.95
+                      className={`p-4 rounded-2xl border transition-colors cursor-pointer ${temperature === 0.95
                           ? "bg-orange-500 border-orange-500 shadow-lg shadow-orange-500/20"
                           : "bg-slate-50 border-slate-100 hover:border-orange-200 hover:bg-slate-50/80"
-                      }`}
+                        }`}
                       onClick={() => setTemperature(0.95)}
                     >
                       <Label
-                        className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${
-                          temperature === 0.95 ? "text-white" : "text-slate-700"
-                        }`}
+                        className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${temperature === 0.95 ? "text-white" : "text-slate-700"
+                          }`}
                       >
                         Creative & Warm
                       </Label>
@@ -558,11 +549,10 @@ export default function AIConfigurationPage() {
                         />
                       </div>
                       <div
-                        className={`flex justify-between mt-2 text-[10px] font-bold ${
-                          temperature === 0.95
+                        className={`flex justify-between mt-2 text-[10px] font-bold ${temperature === 0.95
                             ? "text-white/80"
                             : "text-slate-400"
-                        }`}
+                          }`}
                       >
                         <span>
                           {temperature === 0.95 ? "★ Selected" : "Creative"}
@@ -668,11 +658,10 @@ export default function AIConfigurationPage() {
                             <button
                               key={q.id}
                               onClick={() => setSelectedFaqId(q.id)}
-                              className={`w-full text-left p-3 rounded-lg transition-colors border ${
-                                selectedFaqId === q.id
+                              className={`w-full text-left p-3 rounded-lg transition-colors border ${selectedFaqId === q.id
                                   ? 'border-primary bg-primary/5 shadow'
                                   : 'border-slate-100 bg-white/50 hover:border-primary/20'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="text-sm font-semibold text-slate-800">{question}</div>

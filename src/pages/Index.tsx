@@ -114,16 +114,12 @@ const Index = () => {
               whileHover={{ scale: 1.02 }}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600"
             >
-             <img src="/logo.png" alt="Logo" className="h-10 w-10" loading="lazy" />
+             <img src="/logo.png" alt="Logo" className="h-10 w-10" loading="eager" />
             </motion.div>
             <span className="text-xl font-bold tracking-tight text-white">Pixoranest</span>
           </Link>
           <nav className="flex items-center gap-4">
-            {loading ? (
-              <Button variant="ghost" disabled size="sm" className="w-24 bg-white/5 text-slate-300">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              </Button>
-            ) : session ? (
+            {!loading && session ? (
               <Link to={getRedirectPath(profile?.role || "client")}>
                 <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-full px-6">
                   Dashboard <ArrowRight className="h-4 w-4" />
@@ -150,45 +146,47 @@ const Index = () => {
       <main className="relative z-10 flex-1">
         {/* Hero Section */}
         <section className="relative px-6 py-32 lg:px-8 lg:py-40 flex flex-col items-center text-center">
+          {/* Badge */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.45 }}
-            className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary-foreground mb-8 shadow-sm transition-opacity cursor-default"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary-foreground mb-8 shadow-sm cursor-default"
           >
             <Sparkles className="h-4 w-4 text-primary" />
             <span>Next-Gen AI Automation Platform</span>
           </motion.div>
-          
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
+
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
             className="mx-auto max-w-5xl text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 drop-shadow-sm pb-2"
           >
             Scale Your Communications <br className="hidden md:block"/>
             <span className="bg-gradient-to-r from-primary via-blue-400 to-indigo-500 bg-clip-text text-transparent filter drop-shadow-[0_0_30px_rgba(48,79,159,0.3)]">with AI</span>
           </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
+
+          {/* Tagline */}
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
+            transition={{ duration: 0.4, delay: 0.16, ease: "easeOut" }}
             className="mx-auto mt-8 max-w-2xl text-lg sm:text-xl text-slate-400 leading-relaxed font-light"
           >
             The all-in-one multi-tenant SaaS for white-labeled AI Voice, WhatsApp, and Social Media automation. Transform how your business connects globally.
           </motion.p>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.6 }}
+            transition={{ duration: 0.35, delay: 0.24, ease: "easeOut" }}
             className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row w-full max-w-md mx-auto sm:max-w-none"
           >
-            {loading ? (
-              <Button size="lg" disabled className="h-14 w-48 rounded-full bg-white/10">Loading...</Button>
-            ) : session ? (
-                <Link to={getRedirectPath(profile?.role || "client") }>
+            {!loading && session ? (
+              <Link to={getRedirectPath(profile?.role || "client")}>
                 <Button size="lg" className="h-14 px-8 gap-3 text-lg rounded-full bg-primary hover:bg-primary/90 w-full sm:w-auto shadow-sm transition-opacity">
                   Launch Dashboard <ArrowRight className="h-5 w-5" />
                 </Button>
@@ -208,20 +206,26 @@ const Index = () => {
               </>
             )}
           </motion.div>
-          
+
           {/* Trusted By */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
             className="mt-24 w-full max-w-4xl mx-auto border-t border-white/10 pt-10"
           >
             <p className="text-sm font-medium text-slate-500 tracking-widest uppercase mb-8">Integrated with industry leaders</p>
             <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8 opacity-60">
               {['Exotel', 'Meta', 'Twilio', 'Retell AI', 'ElevenLabs'].map((brand, i) => (
-                <div key={i} className="text-xl md:text-2xl font-bold bg-gradient-to-r from-slate-400 to-slate-600 bg-clip-text text-transparent filter hover:brightness-150 transition-all duration-300 cursor-default">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.45 + i * 0.06 }}
+                  className="text-xl md:text-2xl font-bold bg-gradient-to-r from-slate-400 to-slate-600 bg-clip-text text-transparent filter hover:brightness-150 transition-all duration-300 cursor-default"
+                >
                   {brand}
-                </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>

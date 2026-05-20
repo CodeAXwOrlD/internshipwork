@@ -182,6 +182,54 @@ const ATTACHMENT_OPTIONS = [
 // Below this px = mobile/tablet (single-panel navigation)
 const DESKTOP_BREAKPOINT = 1280;
 
+const KANBAN_COLUMNS = [
+  "New Lead",
+  "Demo Pending",
+  "Follow-UP",
+  "Demo",
+  "Closed Deal",
+  "Junk Leads"
+] as const;
+
+const COLUMN_STYLES: Record<string, { bg: string, border: string, badgeBg: string, text: string }> = {
+  "New Lead": {
+    bg: "bg-blue-50/20",
+    border: "border-blue-100",
+    badgeBg: "bg-blue-100 text-blue-700",
+    text: "text-blue-900"
+  },
+  "Demo Pending": {
+    bg: "bg-amber-50/20",
+    border: "border-amber-100",
+    badgeBg: "bg-amber-100 text-amber-700",
+    text: "text-amber-900"
+  },
+  "Follow-UP": {
+    bg: "bg-purple-50/20",
+    border: "border-purple-100",
+    badgeBg: "bg-purple-100 text-purple-700",
+    text: "text-purple-900"
+  },
+  "Demo": {
+    bg: "bg-indigo-50/20",
+    border: "border-indigo-100",
+    badgeBg: "bg-indigo-100 text-indigo-700",
+    text: "text-indigo-900"
+  },
+  "Closed Deal": {
+    bg: "bg-emerald-50/20",
+    border: "border-emerald-100",
+    badgeBg: "bg-emerald-100 text-emerald-700",
+    text: "text-emerald-900"
+  },
+  "Junk Leads": {
+    bg: "bg-slate-50/20",
+    border: "border-slate-100",
+    badgeBg: "bg-slate-150 text-slate-600",
+    text: "text-slate-800"
+  }
+};
+
 export default function WhatsAppInbox({
   selectedAppId,
   assignedBots,
@@ -199,6 +247,95 @@ export default function WhatsAppInbox({
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [contactStatuses, setContactStatuses] = useState<Record<string, string>>({});
+  const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
+
+  // Load status mapping from localStorage when client changes
+  useEffect(() => {
+    if (!client) return;
+    try {
+      const stored = localStorage.getItem(`whatsapp_lead_status_${client.id}`);
+      setContactStatuses(stored ? JSON.parse(stored) : {});
+    } catch {
+      setContactStatuses({});
+    }
+  }, [client]);
+
+  const handleUpdateStatus = useCallback(async (phone: string, newStatus: string) => {
+    if (!client) return;
+    const cleanPhone = phone.replace(/^\+/, '');
+    
+    // Update local state
+    setContactStatuses(prev => {
+      const next = { ...prev, [cleanPhone]: newStatus };
+      try {
+        localStorage.setItem(`whatsapp_lead_status_${client.id}`, JSON.stringify(next));
+      } catch (e) {
+        console.error("Failed to write status to localStorage:", e);
+      }
+      return next;
+    });
+
+    // Update DB metadata
+    try {
+      const plusPhone = `+${cleanPhone}`;
+      const { data: msgs, error: fetchErr } = await supabase
+        .from("whatsapp_messages")
+        .select("id, metadata")
+        .eq("client_id", client.id)
+        .in("phone_number", [cleanPhone, plusPhone]);
+        
+      if (fetchErr) throw fetchErr;
+      
+      if (msgs && msgs.length > 0) {
+        const promises = msgs.map(m => {
+          const currentMeta = m.metadata && typeof m.metadata === "object" ? m.metadata : {};
+          const updatedMeta = { ...currentMeta, lead_status: newStatus };
+          return supabase
+            .from("whatsapp_messages")
+            .update({ metadata: updatedMeta })
+            .eq("id", m.id);
+        });
+        await Promise.all(promises);
+      }
+    } catch (err: any) {
+      console.warn("DB metadata sync failed:", err.message);
+    }
+  }, [client]);
+
+  const handleDragStart = (e: React.DragEvent, chatId: string) => {
+    e.dataTransfer.setData("text/plain", chatId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetColumn: string) => {
+    e.preventDefault();
+    const chatId = e.dataTransfer.getData("text/plain");
+    if (!chatId) return;
+    
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    await handleUpdateStatus(chatId, targetColumn);
+    
+    toast({
+      title: "Status updated",
+      description: `Moved ${chat.name} to ${targetColumn}.`,
+      duration: 2000,
+    });
+  };
+
+  const getChatsByColumn = (column: string) => {
+    return filteredChats.filter(chat => {
+      const status = contactStatuses[chat.id] || "New Lead";
+      return status === column;
+    });
+  };
 
   // Bulk selection state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -237,8 +374,11 @@ export default function WhatsAppInbox({
   const handleSelectChat = useCallback((id: string) => setActiveChatId(id), []);
 
   // Derive which panels to show
-  const showListPanel = !isMobileMode || activeChatId === null;
-  const showChatPanel = !isMobileMode || activeChatId !== null;
+  // In Kanban mode: left panel always shown (full width); chat panel shows only when a card is clicked
+  const showListPanel = viewMode === "kanban" ? true : (!isMobileMode || activeChatId === null);
+  const showChatPanel = viewMode === "kanban"
+    ? (activeChatId !== null)
+    : (!isMobileMode || activeChatId !== null);
 
   // Auto-scroll messages to bottom when a chat opens or new messages land.
   useEffect(() => {
@@ -504,21 +644,45 @@ export default function WhatsAppInbox({
         .order("sent_at", { ascending: false });
       if (error) throw error;
       const chatMap = new Map();
+      const dbStatuses: Record<string, string> = {};
+
       data?.forEach((msg) => {
-        if (msg.phone_number && !chatMap.has(msg.phone_number)) {
-          chatMap.set(msg.phone_number, {
-            id: msg.phone_number,
-            name: msg.phone_number,
-            lastMessage: msg.message_content || "",
-            time: msg.sent_at
-              ? formatDistanceToNow(new Date(msg.sent_at), { addSuffix: true })
-              : "just now",
-            unread: 0,
-            status: "online",
-            phone: msg.phone_number,
-          });
+        if (msg.phone_number) {
+          const cleanPhone = msg.phone_number.replace(/^\+/, '');
+          
+          if (msg.metadata && typeof msg.metadata === "object" && (msg.metadata as any).lead_status) {
+            if (!dbStatuses[cleanPhone]) {
+              dbStatuses[cleanPhone] = (msg.metadata as any).lead_status;
+            }
+          }
+
+          if (!chatMap.has(cleanPhone)) {
+            chatMap.set(cleanPhone, {
+              id: cleanPhone,
+              name: msg.phone_number.startsWith('+') ? msg.phone_number : `+${msg.phone_number}`,
+              lastMessage: msg.message_content || "",
+              time: msg.sent_at
+                ? formatDistanceToNow(new Date(msg.sent_at), { addSuffix: true })
+                : "just now",
+              unread: 0,
+              status: "online",
+              phone: cleanPhone,
+            });
+          }
         }
       });
+
+      // Merge DB statuses with localStorage statuses
+      setContactStatuses(prev => {
+        const merged = { ...dbStatuses, ...prev };
+        try {
+          localStorage.setItem(`whatsapp_lead_status_${client.id}`, JSON.stringify(merged));
+        } catch (e) {
+          console.error("Failed to merge statuses in localStorage:", e);
+        }
+        return merged;
+      });
+
       setChats(Array.from(chatMap.values()));
     } catch (error: any) {
       toast({
@@ -529,18 +693,21 @@ export default function WhatsAppInbox({
     } finally {
       setIsLoadingChats(false);
     }
-  }, [client, selectedAppId]);
+  }, [client]);
 
   const fetchMessages = useCallback(
     async (phone: string) => {
       if (!client) return;
       setIsLoadingMessages(true);
       try {
+        const cleanPhone = phone.replace(/^\+/, '');
+        const plusPhone = `+${cleanPhone}`;
+        
         const { data, error } = await supabase
           .from("whatsapp_messages")
           .select("*")
           .eq("client_id", client.id)
-          .eq("phone_number", phone)
+          .in("phone_number", [cleanPhone, plusPhone])
           .order("sent_at", { ascending: true });
         if (error) throw error;
         setMessages(dedupeMessagesById(data || []));
@@ -554,7 +721,7 @@ export default function WhatsAppInbox({
         setIsLoadingMessages(false);
       }
     },
-    [client, selectedAppId, dedupeMessagesById],
+    [client, dedupeMessagesById],
   );
 
   useEffect(() => {
@@ -562,27 +729,37 @@ export default function WhatsAppInbox({
   }, [fetchChats]);
 
   useEffect(() => {
-    if (activeChatId) {
+    if (activeChatId && client) {
       fetchMessages(activeChatId);
+      
+      const cleanPhone = activeChatId.replace(/^\+/, '');
+      const randomId = Math.random().toString(36).substring(2, 9);
+      const channelName = `whatsapp_messages:${cleanPhone}-${randomId}`;
+
       const channel = supabase
-        .channel(`whatsapp_messages:${activeChatId}`)
+        .channel(channelName)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "whatsapp_messages",
-            filter: `phone_number=eq.${activeChatId}`,
+            filter: `client_id=eq.${client.id}`,
           },
-          (payload) =>
-            setMessages((prev) => dedupeMessagesById([...prev, payload.new])),
+          (payload) => {
+            const msg = payload.new;
+            const msgPhone = msg.phone_number?.replace(/^\+/, '');
+            if (msgPhone === cleanPhone) {
+              setMessages((prev) => dedupeMessagesById([...prev, msg]));
+            }
+          },
         )
         .subscribe();
       return () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [activeChatId, fetchMessages, dedupeMessagesById]);
+  }, [activeChatId, client?.id, fetchMessages, dedupeMessagesById]);
 
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !activeChatId || !selectedAppId || !client)
@@ -639,7 +816,10 @@ export default function WhatsAppInbox({
     setShowDeleteConfirm(false);
 
     try {
-      const phoneNumbers = Array.from(selectedChats);
+      const phoneNumbers = Array.from(selectedChats).flatMap((phone) => {
+        const clean = phone.replace(/^\+/, '');
+        return [clean, `+${clean}`];
+      });
 
       // Delete messages associated with these phone numbers for this client
       const { error } = await (supabase as any)
@@ -731,11 +911,14 @@ export default function WhatsAppInbox({
   const handleClearChat = async () => {
     if (!activeChatId || !client) return;
     try {
+      const cleanPhone = activeChatId.replace(/^\+/, '');
+      const plusPhone = `+${cleanPhone}`;
+      
       const { error } = await supabase
         .from("whatsapp_messages")
         .delete()
         .eq("client_id", client.id)
-        .eq("phone_number", activeChatId);
+        .in("phone_number", [cleanPhone, plusPhone]);
 
       if (error) throw error;
 
@@ -743,7 +926,7 @@ export default function WhatsAppInbox({
         .from("whatsapp_messages")
         .select("id", { count: "exact", head: true })
         .eq("client_id", client.id)
-        .eq("phone_number", activeChatId);
+        .in("phone_number", [cleanPhone, plusPhone]);
 
       if (verifyError) throw verifyError;
 
@@ -876,7 +1059,9 @@ export default function WhatsAppInbox({
               "flex flex-col bg-white border-r border-slate-200/60 min-w-0 min-h-0 overflow-hidden",
               isMobileMode
                 ? "w-full flex-1"
-                : "w-72 2xl:w-80 shrink-0 h-full",
+                : viewMode === "list"
+                  ? "w-72 2xl:w-80 shrink-0 h-full"
+                  : "flex-1 h-full",
             )}
           >
             {/* Header */}
@@ -972,103 +1157,211 @@ export default function WhatsAppInbox({
               )}
             </div>
 
-            {/* Scrollable list */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-4 h-full">
-              {isLoadingChats ? (
-                <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                  <Loader2 className="mb-2 h-8 w-8 animate-spin text-blue-600" />
-                  <p className="text-xs font-bold uppercase tracking-widest">
-                    Scanning Inbox...
-                  </p>
+            {/* View mode toggle — always visible in its own row */}
+            {!isSelectionMode && (
+              <div className="flex-shrink-0 px-4 pb-2">
+                <div className="inline-flex w-full rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "flex-1 rounded-lg py-1.5 text-[11px] font-bold transition-all",
+                      viewMode === "list"
+                        ? "bg-white text-blue-700 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    ☰ List
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("kanban")}
+                    className={cn(
+                      "flex-1 rounded-lg py-1.5 text-[11px] font-bold transition-all",
+                      viewMode === "kanban"
+                        ? "bg-white text-blue-700 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    ⬛ Kanban
+                  </button>
                 </div>
-              ) : filteredChats.length > 0 ? (
-                <div className="space-y-0.5 pt-1">
-                  {filteredChats.map((chat) => (
-                    <button
-                      key={chat.id}
-                      onClick={(e) => {
-                        if (isSelectionMode) {
-                          toggleSelection(chat.id);
-                        } else {
-                          handleSelectChat(chat.id);
-                        }
-                      }}
-                      className={cn(
-                        "relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 min-w-0 text-left transition-all duration-200",
-                        activeChatId === chat.id && !isMobileMode && !isSelectionMode
-                          ? "border border-blue-100 bg-blue-50 shadow-sm"
-                          : "hover:bg-slate-50 active:scale-[0.985]",
-                        isSelectionMode && selectedChats.has(chat.id) && "bg-slate-50",
-                      )}
-                    >
-                      {activeChatId === chat.id && !isMobileMode && !isSelectionMode && (
-                        <div className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-blue-600" />
-                      )}
+              </div>
+            )}
 
-                      {isSelectionMode && (
-                        <div
-                          className="mr-1 shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedChats.has(chat.id)}
-                            onChange={() => toggleSelection(chat.id)}
-                            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            {/* Scrollable list or Kanban Board */}
+            {viewMode === "list" ? (
+              <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-4 h-full">
+                {isLoadingChats ? (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                    <Loader2 className="mb-2 h-8 w-8 animate-spin text-blue-600" />
+                    <p className="text-xs font-bold uppercase tracking-widest">
+                      Scanning Inbox...
+                    </p>
+                  </div>
+                ) : filteredChats.length > 0 ? (
+                  <div className="space-y-0.5 pt-1">
+                    {filteredChats.map((chat) => (
+                      <button
+                        key={chat.id}
+                        onClick={(e) => {
+                          if (isSelectionMode) {
+                            toggleSelection(chat.id);
+                          } else {
+                            handleSelectChat(chat.id);
+                          }
+                        }}
+                        className={cn(
+                          "relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 min-w-0 text-left transition-all duration-200",
+                          activeChatId === chat.id && !isMobileMode && !isSelectionMode
+                            ? "border border-blue-100 bg-blue-50 shadow-sm"
+                            : "hover:bg-slate-50 active:scale-[0.985]",
+                          isSelectionMode && selectedChats.has(chat.id) && "bg-slate-50",
+                        )}
+                      >
+                        {activeChatId === chat.id && !isMobileMode && !isSelectionMode && (
+                          <div className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-blue-600" />
+                        )}
+
+                        {isSelectionMode && (
+                          <div
+                            className="mr-1 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedChats.has(chat.id)}
+                              onChange={() => toggleSelection(chat.id)}
+                              className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          </div>
+                        )}
+
+                        <div className="relative shrink-0">
+                          <Avatar className="h-10 w-10 border-2 border-white shadow-md">
+                            <AvatarFallback
+                              className={cn(
+                                "text-xs font-black",
+                                activeChatId === chat.id && !isMobileMode
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-slate-100 text-slate-600",
+                              )}
+                            >
+                              {chat.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span
+                            className={cn(
+                              "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white",
+                              chat.status === "online"
+                                ? "bg-green-500"
+                                : "bg-slate-300",
+                            )}
                           />
                         </div>
-                      )}
 
-                      <div className="relative shrink-0">
-                        <Avatar className="h-10 w-10 border-2 border-white shadow-md">
-                          <AvatarFallback
-                            className={cn(
-                              "text-xs font-black",
-                              activeChatId === chat.id && !isMobileMode
-                                ? "bg-blue-600 text-white"
-                                : "bg-slate-100 text-slate-600",
-                            )}
-                          >
-                            {chat.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span
-                          className={cn(
-                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white",
-                            chat.status === "online"
-                              ? "bg-green-500"
-                              : "bg-slate-300",
-                          )}
-                        />
-                      </div>
-
-                      <div className="flex min-w-0 w-0 flex-1 flex-col items-start overflow-hidden">
-                        <div className="mb-0.5 flex w-full items-center justify-between">
-                          <span className="truncate text-sm font-bold text-slate-900">
-                            {chat.name}
-                          </span>
-                          <span className="ml-2 shrink-0 whitespace-nowrap text-[10px] font-semibold text-slate-400">
-                            {chat.time}
+                        <div className="flex min-w-0 w-0 flex-1 flex-col items-start overflow-hidden">
+                          <div className="mb-0.5 flex w-full items-center justify-between">
+                            <span className="truncate text-sm font-bold text-slate-900">
+                              {chat.name}
+                            </span>
+                            <span className="ml-2 shrink-0 whitespace-nowrap text-[10px] font-semibold text-slate-400">
+                              {chat.time}
+                            </span>
+                          </div>
+                          <span className="block w-full truncate text-[11px] font-medium text-slate-500">
+                            {chat.lastMessage}
                           </span>
                         </div>
-                        <span className="block w-full truncate text-[11px] font-medium text-slate-500">
-                          {chat.lastMessage}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-20 text-center">
+                    <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
+                      <MessageSquare className="h-7 w-7" />
+                    </div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                      No conversations found
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-x-auto flex gap-4 p-4 min-h-0 select-none bg-slate-50/30 border-t border-slate-100">
+                {KANBAN_COLUMNS.map((column) => {
+                  const columnChats = getChatsByColumn(column);
+                  return (
+                    <div
+                      key={column}
+                      onDragOver={handleDragOver}
+                      onDragEnter={() => setDraggedOverColumn(column)}
+                      onDragLeave={() => setDraggedOverColumn(null)}
+                      onDrop={(e) => {
+                        setDraggedOverColumn(null);
+                        handleDrop(e, column);
+                      }}
+                      className={cn(
+                        "flex flex-col rounded-2xl border p-4 min-w-[280px] w-[280px] sm:w-[300px] shrink-0 min-h-0 bg-slate-50/50 transition-all duration-200",
+                        COLUMN_STYLES[column].bg,
+                        COLUMN_STYLES[column].border,
+                        draggedOverColumn === column && "ring-2 ring-blue-500 ring-offset-2 bg-blue-50/20"
+                      )}
+                    >
+                      {/* Column Header */}
+                      <div className="flex items-center justify-between mb-3 shrink-0">
+                        <span className={cn("text-[11px] font-black uppercase tracking-wider", COLUMN_STYLES[column].text)}>
+                          {column}
+                        </span>
+                        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black", COLUMN_STYLES[column].badgeBg)}>
+                          {columnChats.length}
                         </span>
                       </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-20 text-center">
-                  <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
-                    <MessageSquare className="h-7 w-7" />
-                  </div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
-                    No conversations found
-                  </p>
-                </div>
-              )}
-            </div>
+
+                      {/* Cards Container */}
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-10">
+                        {columnChats.map((chat) => (
+                          <div
+                            key={chat.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, chat.id)}
+                            onClick={() => handleSelectChat(chat.id)}
+                            className={cn(
+                              "relative p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-sm cursor-grab active:cursor-grabbing hover:border-blue-400 hover:shadow-md transition-all text-left space-y-2 select-none",
+                              activeChatId === chat.id && "border-blue-500 ring-2 ring-blue-500/10 bg-blue-50/10"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-7 w-7 border-2 border-white shadow">
+                                <AvatarFallback className="bg-slate-100 text-slate-600 text-[10px] font-black">
+                                  {chat.name.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-bold text-slate-900">
+                                  {chat.name}
+                                </p>
+                              </div>
+                              <span className="shrink-0 text-[9px] font-semibold text-slate-400">
+                                {chat.time}
+                              </span>
+                            </div>
+                            <p className="line-clamp-2 text-[10px] font-medium text-slate-500 leading-normal">
+                              {chat.lastMessage}
+                            </p>
+                          </div>
+                        ))}
+                        {columnChats.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-slate-200/50 rounded-xl opacity-30 text-[10px] font-bold text-slate-400">
+                            Drag leads here
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

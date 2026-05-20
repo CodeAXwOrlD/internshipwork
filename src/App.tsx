@@ -55,79 +55,79 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <ErrorBoundary>
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Suspense fallback={
-            <div className="flex h-screen w-screen items-center justify-center bg-background">
-              <div className="flex flex-col items-center gap-4">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                <p className="text-sm text-slate-400 animate-pulse">Loading app...</p>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Suspense fallback={
+              <div className="flex h-screen w-screen items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                  <p className="text-sm text-slate-400 animate-pulse">Loading app...</p>
+                </div>
               </div>
-            </div>
-          }>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route
-                path="/super-admin/*"
-                element={
-                  <ProtectedRoute allowedRoles={["super_admin"]}>
-                    <SuperAdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/*"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/client"
-                element={
-                  <ProtectedRoute allowedRoles={["client"]}>
-                    <ClientLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<ClientDashboardHome />} />
-                <Route path="voice-telecaller" element={<VoiceTelecallerPage />} />
-                <Route path="voice-telecaller/calls" element={<CallLogsPage />} />
-                <Route path="voice-telecaller/campaigns/:campaignId" element={<CampaignDetailPage />} />
-                <Route path="voice-receptionist" element={<VoiceReceptionistPage />} />
-                <Route path="first-voice" element={<InboundServicePage />} />
-                <Route path="inbound" element={<Navigate to="/client/first-voice" replace />} />
-                <Route path="voice-agent" element={<VoiceAgentPage />} />
-                <Route path="whatsapp" element={<WhatsAppPage />} />
-                <Route path="whatsapp/history" element={<WhatsAppHistoryPage />} />
-                <Route path="social-media" element={<SocialMediaPage />} />
-                <Route path="email-marketing" element={<EmailMarketingPage />} />
-                <Route path="leads" element={<LeadsPage />} />
-                <Route path="usage" element={<UsageBillingPage />} />
-                <Route path="settings" element={<ClientSettingsPage />} />
-                <Route path="notifications" element={<ClientNotificationsPage />} />
-                <Route path="help" element={<HelpSupportPage />} />
-                <Route path="install" element={<InstallPage />} />
-                <Route path="analytics" element={<ClientAnalyticsPage />} />
-                <Route path="services" element={<ServiceCatalogPage />} />
-                <Route path="ai-config" element={<AIConfigurationPage />} />
-                <Route path="live-chat" element={<LiveChatPage />} />
-                <Route path="landing-page-builder" element={<LandingPageBuilder />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          <FloatingChatWidget />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+            }>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/super-admin/*"
+                  element={
+                    <ProtectedRoute allowedRoles={["super_admin"]}>
+                      <SuperAdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/*"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/client"
+                  element={
+                    <ProtectedRoute allowedRoles={["client"]}>
+                      <ClientLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<ClientDashboardHome />} />
+                  <Route path="voice-telecaller" element={<VoiceTelecallerPage />} />
+                  <Route path="voice-telecaller/calls" element={<CallLogsPage />} />
+                  <Route path="voice-telecaller/campaigns/:campaignId" element={<CampaignDetailPage />} />
+                  <Route path="voice-receptionist" element={<VoiceReceptionistPage />} />
+                  <Route path="first-voice" element={<InboundServicePage />} />
+                  <Route path="inbound" element={<Navigate to="/client/first-voice" replace />} />
+                  <Route path="voice-agent" element={<VoiceAgentPage />} />
+                  <Route path="whatsapp" element={<WhatsAppPage />} />
+                  <Route path="whatsapp/history" element={<WhatsAppHistoryPage />} />
+                  <Route path="social-media" element={<SocialMediaPage />} />
+                  <Route path="email-marketing" element={<EmailMarketingPage />} />
+                  <Route path="leads" element={<LeadsPage />} />
+                  <Route path="usage" element={<UsageBillingPage />} />
+                  <Route path="settings" element={<ClientSettingsPage />} />
+                  <Route path="notifications" element={<ClientNotificationsPage />} />
+                  <Route path="help" element={<HelpSupportPage />} />
+                  <Route path="install" element={<InstallPage />} />
+                  <Route path="analytics" element={<ClientAnalyticsPage />} />
+                  <Route path="services" element={<ServiceCatalogPage />} />
+                  <Route path="ai-config" element={<AIConfigurationPage />} />
+                  <Route path="live-chat" element={<LiveChatPage />} />
+                  <Route path="landing-page-builder" element={<LandingPageBuilder />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+            <FloatingChatWidget />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   </ErrorBoundary>
 );
 

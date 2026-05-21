@@ -43,6 +43,22 @@ export const SERVICE_LABEL_MAP: Record<string, string> = {
   "email-marketing": "Email Marketing",
 };
 
+/**
+ * Services that are in "Coming Soon" mode.
+ * When a slug is removed from this list, the Coming Soon overlay
+ * and catalog restrictions disappear dynamically across the app.
+ */
+export const COMING_SOON_SLUGS: string[] = [
+  "voice-agent",
+  "social-media",
+];
+
+/** Check if a service (by DB slug or route slug) is in Coming Soon mode */
+export function isComingSoon(dbSlug: string): boolean {
+  const routeSlug = getRouteSlug(dbSlug);
+  return COMING_SOON_SLUGS.includes(routeSlug) || COMING_SOON_SLUGS.includes(dbSlug);
+}
+
 /** Convert a DB service slug to the client route segment */
 export function getRouteSlug(dbSlug: string): string {
   return SERVICE_ROUTE_MAP[dbSlug] ?? dbSlug;

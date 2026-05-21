@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { getServicePath, getServiceIcon, SERVICE_ROUTE_MAP } from "@/lib/service-routes";
+import { getServicePath, getServiceIcon, SERVICE_ROUTE_MAP, isComingSoon } from "@/lib/service-routes";
 import { getServiceFeatures } from "@/lib/service-features";
 import { getRouteSlug } from "@/lib/service-routes";
 import type { CatalogService } from "@/hooks/useServiceCatalog";
@@ -28,6 +28,7 @@ export function CatalogServiceCard({
 
   const isPending = service.request_status === "pending";
   const isUnlocked = service.is_unlocked;
+  const comingSoon = isComingSoon(service.slug);
 
   const usagePct = isUnlocked && service.usage_limit && service.usage_limit > 0
     ? Math.round(((service.usage_consumed ?? 0) / service.usage_limit) * 100)
@@ -84,6 +85,12 @@ export function CatalogServiceCard({
             <Badge variant="secondary" className="text-[10px] shrink-0">
               <Lock className="mr-1 h-3 w-3" />
               Locked
+            </Badge>
+          )}
+          {isUnlocked && comingSoon && (
+            <Badge className="bg-blue-500/10 text-blue-600 border-blue-200 hover:bg-blue-500/20 text-[10px] shrink-0">
+              <Clock className="mr-1 h-3 w-3" />
+              Coming Soon
             </Badge>
           )}
         </div>
@@ -159,7 +166,7 @@ export function CatalogServiceCard({
 
         {/* Action buttons */}
         <div className="flex gap-2 pt-1">
-          {isUnlocked ? (
+          {isUnlocked && !comingSoon ? (
             <Button
               size="sm"
               className="flex-1 text-white"
@@ -168,6 +175,15 @@ export function CatalogServiceCard({
             >
               Open Dashboard
               <ArrowRight className="ml-1 h-3 w-3" />
+            </Button>
+          ) : isUnlocked && comingSoon ? (
+            <Button
+              size="sm"
+              className="flex-1 text-xs bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-colors"
+              onClick={() => onRequestAccess(service)}
+            >
+              <Send className="mr-1 h-3 w-3" />
+              Request Access from Admin
             </Button>
           ) : isPending ? (
             <>

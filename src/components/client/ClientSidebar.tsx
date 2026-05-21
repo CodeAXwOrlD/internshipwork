@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClient } from "@/contexts/ClientContext";
-import { getServicePath, getServiceIcon, getServiceLabel, getRouteSlug } from "@/lib/service-routes";
+import { getServicePath, getServiceIcon, getServiceLabel, getRouteSlug, isComingSoon } from "@/lib/service-routes";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
@@ -253,6 +253,13 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                   >
                     {item.title}
                   </span>
+
+                  {/* Coming Soon indicator */}
+                  {isComingSoon(item.routeSlug) && !collapsed && (
+                    <span className="ml-auto mr-1 text-[8px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20 leading-none shrink-0 hidden md:inline-block">
+                      Soon
+                    </span>
+                  )}
 
                   {/* Active dot / Chevron */}
                   {hasSubItems && !collapsed && (

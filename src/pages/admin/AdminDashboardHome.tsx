@@ -235,7 +235,7 @@ export default function AdminDashboardHome() {
     const ids = clientIds.map(c => c.id);
 
     const [pendingRes, usageRes, invoiceRes] = await Promise.all([
-      supabase.from("client_workflow_instances").select("id", { count: "exact", head: true })
+      supabase.from("service_purchase_requests").select("id", { count: "exact", head: true })
         .in("client_id", ids).eq("status", "pending"),
       supabase.from("client_services").select("usage_consumed, usage_limit")
         .in("client_id", ids).eq("is_active", true),

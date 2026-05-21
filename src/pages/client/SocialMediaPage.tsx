@@ -45,6 +45,7 @@ import {
 } from "recharts";
 import { FaFacebook, FaInstagram, FaLinkedin, FaXTwitter } from "react-icons/fa6";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
+import { isComingSoon } from "@/lib/service-routes";
 
 /* ─── Types ─── */
 interface SocialPost {
@@ -245,16 +246,18 @@ export default function SocialMediaPage() {
 
   return (
     <div className="relative space-y-6">
-      <ComingSoonOverlay
-        title="Socialium"
-        description="Manage and schedule posts across all platforms in one central hub."
-        features={[
-          "Multi-Platform Publishing",
-          "AI-Powered Content Generation",
-          "Advanced Audience Analytics",
-          "Unified Social Media Calendar"
-        ]}
-      />
+      {isComingSoon("social-media") && (
+        <ComingSoonOverlay
+          title="Socialium"
+          description="Manage and schedule posts across all platforms in one central hub."
+          features={[
+            "Multi-Platform Publishing",
+            "AI-Powered Content Generation",
+            "Advanced Audience Analytics",
+            "Unified Social Media Calendar"
+          ]}
+        />
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

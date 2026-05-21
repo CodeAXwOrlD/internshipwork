@@ -79,8 +79,6 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
       case "voice-receptionist": return 10;
       case "email-marketing": return 11;
       case "live-chat": return 12;
-      case "bot-history": return 13;
-      case "ai-config": return 14;
       case "settings": return 15;
       default: return 100;
     }
@@ -94,8 +92,6 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
     { title: "Analytics", icon: BarChart3, path: "/client/analytics", routeSlug: "analytics" },
     { title: "Usage & Billing", icon: Activity, path: "/client/usage", routeSlug: "usage" },
     { title: "Live Chat", icon: MessageSquare, path: "/client/live-chat", routeSlug: "live-chat" },
-    { title: "Bot History", icon: HistoryIcon, path: "/client/whatsapp/history", routeSlug: "bot-history" },
-    { title: "AI Configuration", icon: Sparkles, path: "/client/ai-config", routeSlug: "ai-config" },
     { title: "Settings", icon: Settings, path: "/client/settings", routeSlug: "settings" },
   ];
 

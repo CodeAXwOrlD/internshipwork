@@ -15,7 +15,6 @@ const VoiceReceptionistPage = lazy(() => import("@/pages/client/VoiceReceptionis
 const CampaignDetailPage = lazy(() => import("@/pages/client/CampaignDetailPage"));
 const CallLogsPage = lazy(() => import("@/pages/client/CallLogsPage"));
 const WhatsAppPage = lazy(() => import("@/pages/client/WhatsAppPage"));
-const WhatsAppHistoryPage = lazy(() => import("@/pages/client/WhatsAppHistoryPage"));
 const SocialMediaPage = lazy(() => import("@/pages/client/SocialMediaPage"));
 const UsageBillingPage = lazy(() => import("@/pages/client/UsageBillingPage"));
 const ClientSettingsPage = lazy(() => import("@/pages/client/ClientSettingsPage"));
@@ -25,7 +24,6 @@ const InstallPage = lazy(() => import("@/pages/client/InstallPage"));
 const ClientAnalyticsPage = lazy(() => import("@/pages/client/ClientAnalyticsPage"));
 const ServiceCatalogPage = lazy(() => import("@/pages/client/ServiceCatalogPage"));
 const EmailMarketingPage = lazy(() => import("@/pages/client/EmailMarketingPage"));
-const AIConfigurationPage = lazy(() => import("@/pages/client/AIConfigurationPage"));
 const LiveChatPage = lazy(() => import("@/pages/client/LiveChatPage"));
 const LandingPageBuilder = lazy(() => import("@/pages/client/LandingPageBuilder"));
 const InboundServicePage = lazy(() => import("@/pages/client/InboundServicePage"));
@@ -37,7 +35,6 @@ const ROUTES_MAP: Record<string, React.ComponentType<any>> = {
   "/client/first-voice": InboundServicePage,
   "/client/voice-agent": VoiceAgentPage,
   "/client/whatsapp": WhatsAppPage,
-  "/client/whatsapp/history": WhatsAppHistoryPage,
   "/client/social-media": SocialMediaPage,
   "/client/email-marketing": EmailMarketingPage,
   "/client/leads": LeadsPage,
@@ -48,7 +45,6 @@ const ROUTES_MAP: Record<string, React.ComponentType<any>> = {
   "/client/install": InstallPage,
   "/client/analytics": ClientAnalyticsPage,
   "/client/services": ServiceCatalogPage,
-  "/client/ai-config": AIConfigurationPage,
   "/client/live-chat": LiveChatPage,
   "/client/landing-page-builder": LandingPageBuilder,
   "/client/voice-telecaller/calls": CallLogsPage,
@@ -126,13 +122,11 @@ function ClientLayoutInner() {
       void import("@/pages/client/ServiceCatalogPage");
       void import("@/pages/client/EmailMarketingPage");
       void import("@/pages/client/LiveChatPage");
-      void import("@/pages/client/AIConfigurationPage");
       void import("@/pages/client/ClientNotificationsPage");
       void import("@/pages/client/HelpSupportPage");
       void import("@/pages/client/InboundServicePage");
       void import("@/pages/client/CallLogsPage");
       void import("@/pages/client/CampaignDetailPage");
-      void import("@/pages/client/WhatsAppHistoryPage");
     };
 
     if (typeof window === "undefined") return;

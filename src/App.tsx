@@ -23,7 +23,6 @@ const VoiceReceptionistPage = lazy(() => import("./pages/client/VoiceReceptionis
 const CampaignDetailPage = lazy(() => import("./pages/client/CampaignDetailPage"));
 const CallLogsPage = lazy(() => import("./pages/client/CallLogsPage"));
 const WhatsAppPage = lazy(() => import("./pages/client/WhatsAppPage"));
-const WhatsAppHistoryPage = lazy(() => import("./pages/client/WhatsAppHistoryPage"));
 const SocialMediaPage = lazy(() => import("./pages/client/SocialMediaPage"));
 const UsageBillingPage = lazy(() => import("./pages/client/UsageBillingPage"));
 const ClientSettingsPage = lazy(() => import("./pages/client/ClientSettingsPage"));
@@ -34,7 +33,6 @@ const InstallPage = lazy(() => import("./pages/client/InstallPage"));
 const ClientAnalyticsPage = lazy(() => import("./pages/client/ClientAnalyticsPage"));
 const ServiceCatalogPage = lazy(() => import("./pages/client/ServiceCatalogPage"));
 const EmailMarketingPage = lazy(() => import("./pages/client/EmailMarketingPage"));
-const AIConfigurationPage = lazy(() => import("./pages/client/AIConfigurationPage"));
 const LiveChatPage = lazy(() => import("./pages/client/LiveChatPage"));
 const LandingPageBuilder = lazy(() => import("./pages/client/LandingPageBuilder"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -105,7 +103,6 @@ const App = () => (
                   <Route path="inbound" element={<Navigate to="/client/first-voice" replace />} />
                   <Route path="voice-agent" element={<VoiceAgentPage />} />
                   <Route path="whatsapp" element={<WhatsAppPage />} />
-                  <Route path="whatsapp/history" element={<WhatsAppHistoryPage />} />
                   <Route path="social-media" element={<SocialMediaPage />} />
                   <Route path="email-marketing" element={<EmailMarketingPage />} />
                   <Route path="leads" element={<LeadsPage />} />
@@ -116,7 +113,6 @@ const App = () => (
                   <Route path="install" element={<InstallPage />} />
                   <Route path="analytics" element={<ClientAnalyticsPage />} />
                   <Route path="services" element={<ServiceCatalogPage />} />
-                  <Route path="ai-config" element={<AIConfigurationPage />} />
                   <Route path="live-chat" element={<LiveChatPage />} />
                   <Route path="landing-page-builder" element={<LandingPageBuilder />} />
                 </Route>

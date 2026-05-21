@@ -180,7 +180,7 @@ export default function LiveChatPage() {
     }
   }, [chatMessages, selectedChat]);
 
-  const fetchActiveSessions = async () => {
+  async function fetchActiveSessions() {
     try {
       const {
         data: { user },
@@ -240,7 +240,7 @@ export default function LiveChatPage() {
     }
   };
 
-  const handleToggleAI = async (checked: boolean) => {
+  async function handleToggleAI(checked: boolean) {
     setIsAIActive(checked);
     if (!selectedChat) return;
     try {
@@ -253,7 +253,8 @@ export default function LiveChatPage() {
     }
   };
 
-  const fetchChatMessages = async (sid: string) => {
+  async function fetchChatMessages(sid: string) {
+    if (!sid || sid.startsWith("mock-")) return;
     try {
       const { data: msgs, error } = await supabase
         .from("ai_chat_messages")
@@ -282,7 +283,7 @@ export default function LiveChatPage() {
     }
   };
 
-  const handleCreateTestSession = async () => {
+  async function handleCreateTestSession() {
     try {
       const {
         data: { user },
@@ -339,7 +340,7 @@ export default function LiveChatPage() {
     }
   };
 
-  const handleSendMessage = async () => {
+  async function handleSendMessage() {
     if (!message.trim() || !sessionId) return;
 
     const userText = message.trim();
@@ -447,7 +448,6 @@ export default function LiveChatPage() {
                 >
                   {selectedChat?.id === chat.id && (
                     <div
-                      layoutId="chat-indicator"
                       className="absolute left-0 top-0 bottom-0 w-1 bg-primary"
                     />
                   )}

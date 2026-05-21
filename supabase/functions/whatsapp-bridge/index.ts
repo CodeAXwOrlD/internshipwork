@@ -133,30 +133,7 @@ Deno.serve(async (req) => {
       whapiResult = { raw: await whapiResponse.text().catch(() => "") };
     }
 
-    // 4. Save to Supabase (Only for outbound messages)
-    if (
-      whapiResponse.ok &&
-      clientId &&
-      req.method === "POST" &&
-      targetPath.includes("messages")
-    ) {
-      const dbAppId =
-        appId === "00000000-0000-0000-0000-000000000000" ? null : appId;
-
-      const { error: dbError } = await supabaseClient
-        .from("whatsapp_messages")
-        .insert({
-          client_id: clientId,
-          application_id: dbAppId,
-          phone_number: to,
-          message_content: messageText,
-          message_type: "text",
-          direction: "outbound",
-          status: "sent",
-          external_id: whapiResult.id || whapiResult.message_id,
-        });
-      if (dbError) console.error("DB Save failed:", dbError);
-    }
+    // 4. Removed duplicate Supabase save. (Frontend handles it)
 
     return new Response(JSON.stringify(whapiResult), {
       status: whapiResponse.status,

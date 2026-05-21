@@ -67,6 +67,17 @@ interface PendingAlerts {
   pendingInvoices: number;
 }
 
+interface PendingRequest {
+  id: string;
+  client_id: string;
+  service_id: string;
+  plan_id: string | null;
+  message: string | null;
+  created_at: string;
+  clients: { company_name: string } | null;
+  services: { name: string; category: string } | null;
+}
+
 export default function AdminDashboardHome() {
   const { profile } = useAuth();
   const { admin, primaryColor, secondaryColor } = useAdmin();
@@ -77,6 +88,7 @@ export default function AdminDashboardHome() {
   const [recentClients, setRecentClients] = useState<RecentClient[]>([]);
   const [serviceUsage, setServiceUsage] = useState<ServiceUsage[]>([]);
   const [revenueTrend, setRevenueTrend] = useState<RevenueTrend[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [alerts, setAlerts] = useState<PendingAlerts>({ pendingActivation: 0, nearUsageLimit: 0, pendingInvoices: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -93,6 +105,7 @@ export default function AdminDashboardHome() {
       fetchServiceUsage(),
       fetchRevenueTrend(),
       fetchAlerts(),
+      fetchPendingRequests(),
     ]);
     setIsLoading(false);
   }
@@ -254,6 +267,53 @@ export default function AdminDashboardHome() {
     });
   }
 
+  async function fetchPendingRequests() {
+    if (!admin) return;
+    const { data: clientIds } = await supabase.from("clients").select("id").eq("admin_id", admin.id);
+    if (!clientIds?.length) return;
+    
+    const ids = clientIds.map(c => c.id);
+    const { data } = await supabase
+      .from("service_purchase_requests")
+      .select("*, clients(company_name), services(name, category)")
+      .in("client_id", ids)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+      
+    if (data) {
+      setPendingRequests(data as any[]);
+    }
+  }
+
+  const handleRequestAction = async (requestId: string, status: "approved" | "rejected") => {
+    try {
+      const { error } = await supabase
+        .from("service_purchase_requests")
+        .update({ status })
+        .eq("id", requestId);
+      if (error) throw error;
+      
+      // Remove from list
+      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+      
+      // Update alerts count
+      setAlerts(prev => ({
+        ...prev,
+        pendingActivation: Math.max(0, prev.pendingActivation - 1)
+      }));
+      
+      if (status === "approved") {
+        // Find the client ID for navigation
+        const req = pendingRequests.find(r => r.id === requestId);
+        if (req) {
+          navigate(`/admin/clients/${req.client_id}?tab=services`);
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to update request status:", err);
+    }
+  };
+
   const revenueTrendPercent = useMemo(() => {
     if (!stats) return 0;
     if (stats.lastMonthRevenue === 0) return stats.thisMonthRevenue > 0 ? 100 : 0;
@@ -305,7 +365,12 @@ export default function AdminDashboardHome() {
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="flex flex-wrap gap-3 text-sm">
             {alerts.pendingActivation > 0 && (
-              <span>{alerts.pendingActivation} client(s) waiting for service activation</span>
+              <span 
+                className="cursor-pointer hover:underline text-yellow-700 font-medium"
+                onClick={() => navigate("/admin/clients")}
+              >
+                {alerts.pendingActivation} client(s) waiting for service activation (Click to manage)
+              </span>
             )}
             {alerts.nearUsageLimit > 0 && (
               <span>{alerts.nearUsageLimit} client(s) reached 80%+ usage limit</span>
@@ -378,6 +443,55 @@ export default function AdminDashboardHome() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pending Requests Widget */}
+      {pendingRequests.length > 0 && (
+        <Card className="bg-white border-yellow-200 shadow-sm overflow-hidden mb-6">
+          <CardHeader className="bg-yellow-50/50 pb-3 border-b border-yellow-100">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <CardTitle className="text-lg font-bold text-slate-800">Pending Service Requests</CardTitle>
+              <Badge className="ml-2 bg-yellow-500 text-white">{pendingRequests.length}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {pendingRequests.map((req) => (
+                <div key={req.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground flex items-center gap-2">
+                      {req.clients?.company_name}
+                      <span className="text-muted-foreground font-normal text-sm">requested</span>
+                      {req.services?.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {format(new Date(req.created_at), "MMM d, yyyy 'at' h:mm a")} 
+                      {req.message && ` • Note: "${req.message}"`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => handleRequestAction(req.id, "rejected")}
+                    >
+                      Reject
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => handleRequestAction(req.id, "approved")}
+                    >
+                      Approve & Assign
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Service Catalog with Lock State */}
       <AdminServiceCatalog primaryColor={primaryColor} />

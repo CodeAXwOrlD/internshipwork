@@ -22,7 +22,7 @@ interface ClientStats {
   totalMessages: number;
   delivered: number;
   read: number;
-  campaigns: number;
+  // campaigns: number;
 }
 
 interface DailyData {
@@ -34,7 +34,7 @@ interface DailyData {
 export default function AdminWhatsAppPage() {
   const { admin, primaryColor } = useAdmin();
   const [loading, setLoading] = useState(true);
-  const [overview, setOverview] = useState({ totalMessages: 0, delivered: 0, read: 0, campaigns: 0, activeClients: 0 });
+  const [overview, setOverview] = useState({ totalMessages: 0, delivered: 0, read: 0, /*campaigns: 0,*/ activeClients: 0 });
   const [clientStats, setClientStats] = useState<ClientStats[]>([]);
   const [dailyMsgs, setDailyMsgs] = useState<DailyData[]>([]);
 
@@ -53,13 +53,13 @@ export default function AdminWhatsAppPage() {
 
       const clientIds = clients.map(c => c.id);
 
-      const [msgsRes, campsRes] = await Promise.all([
+      const [msgsRes] = await Promise.all([
         supabase.from("whatsapp_messages").select("client_id, status, sent_at, delivered_at, read_at").in("client_id", clientIds),
-        supabase.from("whatsapp_campaigns").select("client_id, id").in("client_id", clientIds),
+        // supabase.from("whatsapp_campaigns").select("client_id, id").in("client_id", clientIds),
       ]);
 
       const msgs = msgsRes.data || [];
-      const camps = campsRes.data || [];
+      const camps: any[] = [];
       const delivered = msgs.filter(m => m.status === "delivered" || m.status === "read").length;
       const read = msgs.filter(m => m.status === "read").length;
       const clientsWithMsgs = new Set(msgs.map(m => m.client_id));
@@ -68,7 +68,7 @@ export default function AdminWhatsAppPage() {
         totalMessages: msgs.length,
         delivered,
         read,
-        campaigns: camps.length,
+        // campaigns: camps.length,
         activeClients: clientsWithMsgs.size,
       });
 
@@ -81,8 +81,8 @@ export default function AdminWhatsAppPage() {
         if (m.status === "read") e.read++;
         msgByClient.set(m.client_id, e);
       });
-      const campByClient = new Map<string, number>();
-      camps.forEach(c => campByClient.set(c.client_id, (campByClient.get(c.client_id) || 0) + 1));
+      // const campByClient = new Map<string, number>();
+      // camps.forEach(c => campByClient.set(c.client_id, (campByClient.get(c.client_id) || 0) + 1));
 
       setClientStats(clients.map(cl => {
         const m = msgByClient.get(cl.id) || { total: 0, delivered: 0, read: 0 };
@@ -92,7 +92,7 @@ export default function AdminWhatsAppPage() {
           totalMessages: m.total,
           delivered: m.delivered,
           read: m.read,
-          campaigns: campByClient.get(cl.id) || 0,
+          // campaigns: campByClient.get(cl.id) || 0,
         };
       }));
 
@@ -159,10 +159,10 @@ export default function AdminWhatsAppPage() {
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent"><CheckCheck className="h-5 w-5 text-accent-foreground" /></div>
           <div><p className="text-sm text-muted-foreground">Delivery Rate</p><p className="text-2xl font-bold">{deliveryRate}%</p></div>
         </CardContent></Card>
-        <Card><CardContent className="flex items-center gap-4 p-5">
+        {/* <Card><CardContent className="flex items-center gap-4 p-5">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10"><TrendingUp className="h-5 w-5 text-primary" /></div>
           <div><p className="text-sm text-muted-foreground">Campaigns</p><p className="text-2xl font-bold">{overview.campaigns}</p></div>
-        </CardContent></Card>
+        </CardContent></Card> */}
       </div>
 
       <Card>
@@ -202,7 +202,7 @@ export default function AdminWhatsAppPage() {
                   <TableHead className="text-right">Messages</TableHead>
                   <TableHead className="text-right">Delivered</TableHead>
                   <TableHead className="text-right">Read</TableHead>
-                  <TableHead className="text-right">Campaigns</TableHead>
+                  {/* <TableHead className="text-right">Campaigns</TableHead> */}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -212,7 +212,7 @@ export default function AdminWhatsAppPage() {
                     <TableCell className="text-right font-medium">{cs.totalMessages}</TableCell>
                     <TableCell className="text-right">{cs.delivered}</TableCell>
                     <TableCell className="text-right">{cs.read}</TableCell>
-                    <TableCell className="text-right">{cs.campaigns}</TableCell>
+                    {/* <TableCell className="text-right">{cs.campaigns}</TableCell> */}
                   </TableRow>
                 ))}
               </TableBody>

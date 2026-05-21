@@ -44,6 +44,7 @@ import {
   BarChart, Bar, Cell, Legend,
 } from "recharts";
 import { FaFacebook, FaInstagram, FaLinkedin, FaXTwitter } from "react-icons/fa6";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 
 /* ─── Types ─── */
 interface SocialPost {
@@ -243,7 +244,17 @@ export default function SocialMediaPage() {
   const formatEngagement = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <ComingSoonOverlay
+        title="Socialium"
+        description="Manage and schedule posts across all platforms in one central hub."
+        features={[
+          "Multi-Platform Publishing",
+          "AI-Powered Content Generation",
+          "Advanced Audience Analytics",
+          "Unified Social Media Calendar"
+        ]}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

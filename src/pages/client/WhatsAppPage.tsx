@@ -142,7 +142,7 @@ interface Stats {
   total: number;
   readRate: number;
   readCount: number;
-  activeCampaigns: number;
+  // activeCampaigns: number;
 }
 
 /* ─── Loading Skeleton ─── */
@@ -218,14 +218,14 @@ export default function WhatsAppPage() {
   const isActiveRoute = location.pathname.startsWith("/client/whatsapp");
 
   const [stats, setStats] = useState<Stats | null>(waPageCache?.stats || null);
-  const [campaigns, setCampaigns] = useState<WACampaign[]>(waPageCache?.campaigns || []);
+  // const [campaigns, setCampaigns] = useState<WACampaign[]>(waPageCache?.campaigns || []);
   const [recentMessages, setRecentMessages] = useState<WAMessage[]>(waPageCache?.recentMessages || []);
   const [templates, setTemplates] = useState<any[]>(waPageCache?.templates || []);
   const [isLoading, setIsLoading] = useState(!waPageCache);
   const [isRefreshingTemplates, setIsRefreshingTemplates] = useState(false);
-  const [campaignTab, setCampaignTab] = useState("all");
+  // const [campaignTab, setCampaignTab] = useState("all");
   const [sendModalOpen, setSendModalOpen] = useState(false);
-  const [campaignWizardOpen, setCampaignWizardOpen] = useState(false);
+  // const [campaignWizardOpen, setCampaignWizardOpen] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<any[]>(waPageCache?.analyticsData || []);
   const [statusDistribution, setStatusDistribution] = useState<any[]>(waPageCache?.statusDistribution || []);
   const [workflowInstance, setWorkflowInstance] = useState<any>(waPageCache?.workflowInstance || null);
@@ -242,10 +242,10 @@ export default function WhatsAppPage() {
   const [templateToDelete, setTemplateToDelete] = useState<any | null>(null);
   const [viewTemplateOpen, setViewTemplateOpen] = useState(false);
   const [templateToView, setTemplateToView] = useState<any | null>(null);
-  const [deleteCampaignOpen, setDeleteCampaignOpen] = useState(false);
-  const [campaignToDelete, setCampaignToDelete] = useState<WACampaign | null>(null);
-  const [viewCampaignOpen, setViewCampaignOpen] = useState(false);
-  const [campaignToView, setCampaignToView] = useState<WACampaign | null>(null);
+  // const [deleteCampaignOpen, setDeleteCampaignOpen] = useState(false);
+  // const [campaignToDelete, setCampaignToDelete] = useState<WACampaign | null>(null);
+  // const [viewCampaignOpen, setViewCampaignOpen] = useState(false);
+  // const [campaignToView, setCampaignToView] = useState<WACampaign | null>(null);
 
   // Message Sending State
   const [phone, setPhone] = useState("");
@@ -262,18 +262,20 @@ export default function WhatsAppPage() {
     if (!client) return;
     const monthStart = startOfMonth(new Date()).toISOString();
 
-    const [msgsRes, campaignsRes] = await Promise.all([
+    const [msgsRes] = await Promise.all([
       supabase
         .from("whatsapp_messages")
         .select("status")
         .eq("client_id", client.id)
         .gte("sent_at", monthStart),
-      supabase
-        .from("whatsapp_campaigns")
-        .select("id", { count: "exact", head: true })
-        .eq("client_id", client.id)
-        .eq("status", "sending"),
+      // supabase
+      //   .from("whatsapp_campaigns")
+      //   .select("id", { count: "exact", head: true })
+      //   .eq("client_id", client.id)
+      //   .eq("status", "sending"),
     ]);
+
+    const campaignsRes = { count: 0 };
 
     const msgs = msgsRes.data || [];
     const total = msgs.length;
@@ -297,16 +299,7 @@ export default function WhatsAppPage() {
   }, [client]);
 
   const fetchCampaigns = useCallback(async () => {
-    if (!client) return;
-    const { data } = await supabase
-      .from("whatsapp_campaigns")
-      .select("*")
-      .eq("client_id", client.id)
-      .order("created_at", { ascending: false });
-    const list = (data as WACampaign[]) || [];
-    setCampaigns(list);
-    ensureWaCache().campaigns = list;
-    saveWaCacheToStorage();
+    // Disabled campaign feature
   }, [client]);
 
   const fetchWorkflow = useCallback(async () => {
@@ -536,29 +529,8 @@ export default function WhatsAppPage() {
   }, [fetchTemplates, selectedAppId, templateToDelete, toast]);
 
   const handleDeleteCampaign = useCallback(async () => {
-    if (!campaignToDelete) return;
-
-    try {
-      const { error } = await supabase
-        .from("whatsapp_campaigns")
-        .delete()
-        .eq("id", campaignToDelete.id);
-
-      if (error) throw error;
-
-      toast({ title: "Campaign deleted successfully" });
-      setCampaigns((prev) => prev.filter((c) => c.id !== campaignToDelete.id));
-    } catch (error: any) {
-      toast({
-        title: "Error deleting campaign",
-        description: error.message || "Unable to delete campaign.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteCampaignOpen(false);
-      setCampaignToDelete(null);
-    }
-  }, [campaignToDelete, toast]);
+    // Disabled campaign feature
+  }, []);
 
   const fetchAll = useCallback(async () => {
     if (!client) return;
@@ -611,30 +583,7 @@ export default function WhatsAppPage() {
 
   // Realtime for campaigns
   useEffect(() => {
-    if (!client) return;
-
-    const randomId = Math.random().toString(36).substring(2, 9);
-    const channelName = `wa-campaigns-${client.id}-${randomId}`;
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "whatsapp_campaigns",
-          filter: `client_id=eq.${client.id}`,
-        },
-        () => {
-          waCallbacksRef.current.fetchCampaigns();
-          waCallbacksRef.current.fetchStats();
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Disabled
   }, [client?.id]);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -690,10 +639,7 @@ export default function WhatsAppPage() {
   if (contextLoading || isLoading) return <LoadingSkeleton />;
   if (!waService) return <Navigate to="/client" replace />;
 
-  const filteredCampaigns =
-    campaignTab === "all"
-      ? campaigns
-      : campaigns.filter((c) => c.status === campaignTab);
+  const filteredCampaigns: WACampaign[] = [];
 
   return (
     <div ref={inboxContainerRef} className="flex flex-col md:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden flex-1 min-h-0">
@@ -768,15 +714,7 @@ export default function WhatsAppPage() {
                 </p>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-3 text-[10px] font-bold rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-blue-700 transition-all active:scale-95 whitespace-nowrap"
-                onClick={() => setCampaignWizardOpen(true)}
-                disabled={assignedBots.length === 0}
-              >
-                <Plus className="h-3 w-3 mr-1 text-blue-600" /> Campaign
-              </Button>
+              {/* Removed Campaign button */}
               <Button
                 size="sm"
                 className="h-9 px-3 text-[10px] font-bold rounded-xl shadow-lg shadow-blue-500/25 bg-blue-600 hover:bg-blue-700 transition-all active:scale-95 text-white whitespace-nowrap"
@@ -813,7 +751,7 @@ export default function WhatsAppPage() {
               transition={{ duration: 0.15 }}
               className="space-y-8"
             >
-              <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <StatsCard
                   icon={<MessageCircle className="h-5 w-5" />}
                   color="#25D366"
@@ -835,16 +773,10 @@ export default function WhatsAppPage() {
                   value={`${stats?.readRate ?? 0}%`}
                   subtext="Recipients opened"
                 />
-                <StatsCard
-                  icon={<Zap className="h-5 w-5" />}
-                  color="#f59e0b"
-                  label="Active Campaigns"
-                  value={stats?.activeCampaigns ?? 0}
-                  subtext="Running now"
-                />
+                {/* Removed Active Campaigns stat */}
               </div>
 
-              <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <QuickAction
                   icon={<MessageSquare className="h-5 w-5" />}
                   label="Send Single Message"
@@ -852,13 +784,7 @@ export default function WhatsAppPage() {
                   onClick={() => setSendModalOpen(true)}
                   disabled={assignedBots.length === 0}
                 />
-                <QuickAction
-                  icon={<Users className="h-5 w-5" />}
-                  label="Bulk Campaign"
-                  sub="Send to multiple contacts"
-                  onClick={() => setCampaignWizardOpen(true)}
-                  disabled={assignedBots.length === 0}
-                />
+                {/* Removed Bulk Campaign Quick Action */}
                 <QuickAction
                   icon={<FileText className="h-5 w-5" />}
                   label="Message Templates"
@@ -873,55 +799,7 @@ export default function WhatsAppPage() {
                 />
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-foreground tracking-tight">
-                    Campaign Operations
-                  </h2>
-                </div>
-                <Tabs
-                  value={campaignTab}
-                  onValueChange={setCampaignTab}
-                  className="w-full"
-                >
-                  <TabsList className="mb-4 bg-muted/20 w-full justify-start overflow-x-auto no-scrollbar">
-                    <TabsTrigger value="all">All</TabsTrigger>
-                    <TabsTrigger value="sending">Sending</TabsTrigger>
-                    <TabsTrigger value="completed">Completed</TabsTrigger>
-                    <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-                    <TabsTrigger value="draft">Draft</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value={campaignTab}>
-                    {filteredCampaigns.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredCampaigns.map((c) => (
-                          <CampaignCard
-                            key={c.id}
-                            campaign={c}
-                            onRefresh={fetchCampaigns}
-                            onView={(camp) => {
-                              setCampaignToView(camp);
-                              setViewCampaignOpen(true);
-                            }}
-                            onDelete={(camp) => {
-                              setCampaignToDelete(camp);
-                              setDeleteCampaignOpen(true);
-                            }}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <Card className="border-dashed">
-                        <CardContent className="py-12 text-center text-muted-foreground">
-                          <p className="text-sm">
-                            No {campaignTab} campaigns found in your archives.
-                          </p>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </div>
+              {/* Removed Campaign Operations block */}
 
               <Card className="shadow-sm border-muted/20">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -1337,49 +1215,7 @@ export default function WhatsAppPage() {
         template={templateToView}
       />
 
-      <ConfirmDialog
-        open={deleteCampaignOpen}
-        onOpenChange={(open) => {
-          setDeleteCampaignOpen(open);
-          if (!open) setCampaignToDelete(null);
-        }}
-        title="Delete campaign?"
-        description={
-          <>
-            This will permanently remove the campaign{" "}
-            <span className="font-bold text-foreground">
-              {campaignToDelete?.campaign_name || "this campaign"}
-            </span>{" "}
-            and its associated transmission history.
-          </>
-        }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        variant="destructive"
-        onConfirm={handleDeleteCampaign}
-      />
-
-      <ViewCampaignModalWA
-        open={viewCampaignOpen}
-        onOpenChange={(open) => {
-          setViewCampaignOpen(open);
-          if (!open) setCampaignToView(null);
-        }}
-        campaign={campaignToView}
-      />
-
-      <CreateCampaignWizardWA
-        open={campaignWizardOpen}
-        onOpenChange={setCampaignWizardOpen}
-        clientId={client?.id || ""}
-        onCreated={() => {
-          fetchCampaigns();
-          fetchStats();
-          refetchClient();
-        }}
-        selectedAppId={selectedAppId}
-        templates={templates}
-      />
+      {/* Removed Campaign Modals */}
     </div>
   );
 }

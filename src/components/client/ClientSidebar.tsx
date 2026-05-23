@@ -51,6 +51,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
           icon: Icon,
           path: getServicePath(slug),
           routeSlug,
+          isUnlocked: svc.is_coming_soon_unlocked,
           subItems: [
             { title: "Overview", icon: BarChart3, path: `${getServicePath(slug)}?tab=overview` },
             { title: "Inbox", icon: MessageSquare, path: `${getServicePath(slug)}?tab=inbox` },
@@ -60,9 +61,9 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
         };
       }
 
-      return { title: label, icon: Icon, path: getServicePath(slug), routeSlug };
+      return { title: label, icon: Icon, path: getServicePath(slug), routeSlug, isUnlocked: svc.is_coming_soon_unlocked };
     })
-    .filter(Boolean) as { title: string; icon: React.ElementType; path: string; routeSlug: string; subItems?: any[] }[];
+    .filter(Boolean) as { title: string; icon: React.ElementType; path: string; routeSlug: string; isUnlocked?: boolean; subItems?: any[] }[];
 
   const getSortWeight = (slug: string) => {
     switch (slug) {
@@ -255,7 +256,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
                   </span>
 
                   {/* Coming Soon indicator */}
-                  {isComingSoon(item.routeSlug) && !collapsed && (
+                  {isComingSoon(item.routeSlug, item.isUnlocked) && !collapsed && (
                     <span className="ml-auto mr-1 text-[8px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20 leading-none shrink-0 hidden md:inline-block">
                       Soon
                     </span>

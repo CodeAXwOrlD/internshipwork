@@ -67,7 +67,7 @@ const saveAgentCacheToStorage = () => {
     if (uid && agentPageCache) {
       localStorage.setItem(`pixora_agent_cache_${uid}`, JSON.stringify(agentPageCache));
     }
-  } catch {}
+  } catch { }
 };
 
 /* ─── Main Page ─── */
@@ -92,6 +92,7 @@ export default function VoiceAgentPage() {
   const agentService = assignedServices.find(
     (s) => s.service_slug === "voice-agent" || s.service_slug === "ai-voice-agent"
   );
+  const agentUnlocked = agentService?.is_coming_soon_unlocked ?? false;
 
   useEffect(() => {
     if (!client || contextLoading || !agentService) return;
@@ -260,7 +261,7 @@ export default function VoiceAgentPage() {
 
   return (
     <div className="relative space-y-8 pb-12">
-      {isComingSoon("voice-agent") && (
+      {isComingSoon("voice-agent", agentUnlocked) && (
         <ComingSoonOverlay
           title="EcoAssist (Neural Voice Agent)"
           description="Bootstrap and control your autonomous AI voice agents that intercept global sequences, handle inbound/outbound calls, and sync live leads."

@@ -118,7 +118,7 @@ const saveSocialCacheToStorage = () => {
     if (uid && socialPageCache) {
       localStorage.setItem(`pixora_social_cache_${uid}`, JSON.stringify(socialPageCache));
     }
-  } catch {}
+  } catch { }
 };
 
 const ensureSocialCache = () => {
@@ -147,7 +147,7 @@ export default function SocialMediaPage() {
       localStorage.setItem("last_user_id", client.user_id);
     }
   }, [client?.user_id]);
-  
+
   const [viewMode, setViewMode] = useState<"calendar" | "list" | "brands" | "analytics" | "accounts">("calendar");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createBrandOpen, setCreateBrandOpen] = useState(false);
@@ -156,11 +156,13 @@ export default function SocialMediaPage() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedBrandId, setSelectedBrandId] = useState<string>("all");
 
-  const smService = assignedServices.find(s => 
-    s.service_slug === "social-media-automation" || 
-    s.service_slug === "social-media" || 
+  const smService = assignedServices.find(s =>
+    s.service_slug === "social-media-automation" ||
+    s.service_slug === "social-media" ||
     s.service_slug === "socialium"
   );
+  const smUnlocked = smService?.is_coming_soon_unlocked ?? false;
+
 
   const fetchAll = useCallback(async () => {
     if (!client) return;
@@ -246,7 +248,7 @@ export default function SocialMediaPage() {
 
   return (
     <div className="relative space-y-6">
-      {isComingSoon("social-media") && (
+      {isComingSoon("social-media", smUnlocked) && (
         <ComingSoonOverlay
           title="Socialium"
           description="Manage and schedule posts across all platforms in one central hub."
@@ -326,7 +328,7 @@ export default function SocialMediaPage() {
         )}
       </div>
 
-      {viewMode === "calendar" && <CalendarView posts={posts} month={calendarMonth} setMonth={setCalendarMonth} onDayClick={(day) => {}} onPostClick={setDetailPost} />}
+      {viewMode === "calendar" && <CalendarView posts={posts} month={calendarMonth} setMonth={setCalendarMonth} onDayClick={(day) => { }} onPostClick={setDetailPost} />}
       {viewMode === "list" && <ListView posts={posts} onEdit={p => { setEditingPost(p); setCreateModalOpen(true); }} onView={setDetailPost} onDelete={async (id) => { await supabase.from("social_media_posts").delete().eq("id", id); fetchPosts(); fetchStats(); }} />}
       {viewMode === "brands" && <BrandsView brands={brands} posts={posts} onRefresh={fetchBrands} onDelete={async (id) => { await supabase.from("social_media_brands").delete().eq("id", id); fetchBrands(); }} />}
       {viewMode === "analytics" && <AnalyticsView posts={selectedBrandId === "all" ? posts : posts.filter(p => p.brand_id === selectedBrandId)} brands={brands} selectedBrandId={selectedBrandId} />}
@@ -679,7 +681,7 @@ function CreatePostModal({ open, onOpenChange, clientId, brands, existingPost, o
     try {
       const ext = file.name.split(".").pop();
       const filePath = `${clientId}/${Date.now()}-${uploadingIdx}.${ext}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from("social-media-assets")
         .upload(filePath, file);
@@ -853,11 +855,11 @@ function CreatePostModal({ open, onOpenChange, clientId, brands, existingPost, o
                     </Button>
                   )}
                 </div>
-                
+
                 {mediaUrls.map((url, idx) => (
                   <div key={idx} className="flex gap-2">
                     <div className="flex-1 relative">
-                      <Input 
+                      <Input
                         placeholder={`https://example.com/${postType === "video" ? "video.mp4" : "image.jpg"}`}
                         value={url}
                         onChange={e => {
@@ -867,9 +869,9 @@ function CreatePostModal({ open, onOpenChange, clientId, brands, existingPost, o
                         }}
                         className="h-8 text-xs bg-background pr-8"
                       />
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="absolute right-1 top-1 h-6 w-6 text-muted-foreground hover:text-primary"
                         onClick={() => {
                           setUploadingIdx(idx);
@@ -887,12 +889,12 @@ function CreatePostModal({ open, onOpenChange, clientId, brands, existingPost, o
                     )}
                   </div>
                 ))}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept={postType === "video" ? "video/*" : "image/*"} 
-                  onChange={handleFileUpload} 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept={postType === "video" ? "video/*" : "image/*"}
+                  onChange={handleFileUpload}
                 />
                 <p className="text-[10px] text-muted-foreground italic">Provide direct URLs to your media hosted on a CDN or cloud storage.</p>
               </div>
@@ -962,12 +964,12 @@ function CreatePostModal({ open, onOpenChange, clientId, brands, existingPost, o
                           <img src={url} className="w-full h-full object-cover" />
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                           <Button variant="ghost" size="icon" className="h-6 w-6 text-white" onClick={(e) => {
-                             e.stopPropagation();
-                             setMediaUrls(mediaUrls.filter((_, i) => i !== idx));
-                           }}>
-                             <X className="h-3 w-3" />
-                           </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-white" onClick={(e) => {
+                            e.stopPropagation();
+                            setMediaUrls(mediaUrls.filter((_, i) => i !== idx));
+                          }}>
+                            <X className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -1023,8 +1025,8 @@ function PostDetailModal({ post, onClose, onEdit }: { post: SocialPost | null; o
           </DialogTitle>
           <DialogDescription>
             {post.posted_at ? `Posted ${formatDistanceToNow(parseISO(post.posted_at), { addSuffix: true })}` :
-             post.scheduled_at ? `Scheduled for ${format(parseISO(post.scheduled_at), "PPp")}` :
-             `Created ${formatDistanceToNow(parseISO(post.created_at), { addSuffix: true })}`}
+              post.scheduled_at ? `Scheduled for ${format(parseISO(post.scheduled_at), "PPp")}` :
+                `Created ${formatDistanceToNow(parseISO(post.created_at), { addSuffix: true })}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -1276,9 +1278,9 @@ function AccountsView() {
                     <p className="text-xs text-muted-foreground">Not connected</p>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-9 px-4 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-all"
                   onClick={() => setConnectingPlatform(p)}
                 >
@@ -1290,9 +1292,9 @@ function AccountsView() {
         </CardContent>
       </Card>
 
-      <ConnectPlatformModal 
-        platform={connectingPlatform} 
-        onClose={() => setConnectingPlatform(null)} 
+      <ConnectPlatformModal
+        platform={connectingPlatform}
+        onClose={() => setConnectingPlatform(null)}
       />
     </>
   );
@@ -1349,8 +1351,8 @@ function ConnectPlatformModal({ platform, onClose }: { platform: typeof PLATFORM
 
         <DialogFooter className="sm:justify-between gap-2">
           <Button variant="ghost" onClick={onClose} className="text-xs">Cancel</Button>
-          <Button 
-            className="rounded-lg px-6 font-semibold shadow-lg transition-transform active:scale-95" 
+          <Button
+            className="rounded-lg px-6 font-semibold shadow-lg transition-transform active:scale-95"
             style={{ backgroundColor: platform.color, color: 'white' }}
             onClick={() => {
               window.open("#", "_blank");

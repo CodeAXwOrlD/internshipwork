@@ -290,8 +290,8 @@ export type Database = {
         Insert: {
           call_log_id?: string | null
           call_status?:
-            | Database["public"]["Enums"]["contact_call_status"]
-            | null
+          | Database["public"]["Enums"]["contact_call_status"]
+          | null
           campaign_id: string
           contact_data?: Json | null
           contact_name?: string | null
@@ -302,8 +302,8 @@ export type Database = {
         Update: {
           call_log_id?: string | null
           call_status?:
-            | Database["public"]["Enums"]["contact_call_status"]
-            | null
+          | Database["public"]["Enums"]["contact_call_status"]
+          | null
           campaign_id?: string
           contact_data?: Json | null
           contact_name?: string | null
@@ -344,6 +344,7 @@ export type Database = {
           expires_at: string | null
           id: string
           is_active: boolean | null
+          is_coming_soon_unlocked: boolean
           last_reset_at: string | null
           plan_id: string | null
           reset_period: Database["public"]["Enums"]["reset_period"] | null
@@ -359,6 +360,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          is_coming_soon_unlocked?: boolean
           is_active?: boolean | null
           last_reset_at?: string | null
           plan_id?: string | null
@@ -374,6 +376,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           expires_at?: string | null
+          is_coming_soon_unlocked?: boolean
           id?: string
           is_active?: boolean | null
           last_reset_at?: string | null
@@ -422,8 +425,8 @@ export type Database = {
           created_at: string
           credential_name: string
           credential_status:
-            | Database["public"]["Enums"]["credential_status"]
-            | null
+          | Database["public"]["Enums"]["credential_status"]
+          | null
           credential_type: string
           expires_at: string | null
           id: string
@@ -437,8 +440,8 @@ export type Database = {
           created_at?: string
           credential_name: string
           credential_status?:
-            | Database["public"]["Enums"]["credential_status"]
-            | null
+          | Database["public"]["Enums"]["credential_status"]
+          | null
           credential_type: string
           expires_at?: string | null
           id?: string
@@ -452,8 +455,8 @@ export type Database = {
           created_at?: string
           credential_name?: string
           credential_status?:
-            | Database["public"]["Enums"]["credential_status"]
-            | null
+          | Database["public"]["Enums"]["credential_status"]
+          | null
           credential_type?: string
           expires_at?: string | null
           id?: string
@@ -1720,38 +1723,38 @@ export type Database = {
     Enums: {
       app_role: "super_admin" | "admin" | "client"
       call_status:
-        | "initiated"
-        | "ringing"
-        | "answered"
-        | "busy"
-        | "no_answer"
-        | "failed"
-        | "completed"
+      | "initiated"
+      | "ringing"
+      | "answered"
+      | "busy"
+      | "no_answer"
+      | "failed"
+      | "completed"
       call_type: "inbound" | "outbound"
       campaign_status:
-        | "draft"
-        | "scheduled"
-        | "running"
-        | "paused"
-        | "completed"
-        | "cancelled"
+      | "draft"
+      | "scheduled"
+      | "running"
+      | "paused"
+      | "completed"
+      | "cancelled"
       campaign_type: "telecaller" | "receptionist" | "voice_agent"
       company_size: "1-10" | "11-50" | "51-200" | "201-500" | "500+"
       contact_call_status:
-        | "pending"
-        | "calling"
-        | "answered"
-        | "busy"
-        | "failed"
-        | "completed"
+      | "pending"
+      | "calling"
+      | "answered"
+      | "busy"
+      | "failed"
+      | "completed"
       credential_status: "pending" | "configured" | "expired" | "invalid"
       execution_mode: "manual" | "webhook" | "scheduled" | "trigger"
       execution_status:
-        | "running"
-        | "success"
-        | "error"
-        | "waiting"
-        | "cancelled"
+      | "running"
+      | "success"
+      | "error"
+      | "waiting"
+      | "cancelled"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       lead_source: "voice_agent" | "telecaller" | "receptionist" | "manual"
       lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
@@ -1763,32 +1766,32 @@ export type Database = {
       service_category: "voice" | "messaging" | "social_media"
       social_platform: "facebook" | "instagram" | "linkedin" | "twitter" | "all"
       social_post_status:
-        | "draft"
-        | "scheduled"
-        | "publishing"
-        | "posted"
-        | "failed"
+      | "draft"
+      | "scheduled"
+      | "publishing"
+      | "posted"
+      | "failed"
       social_post_type: "text" | "image" | "video" | "carousel" | "story"
       wa_campaign_status:
-        | "draft"
-        | "scheduled"
-        | "sending"
-        | "completed"
-        | "cancelled"
+      | "draft"
+      | "scheduled"
+      | "sending"
+      | "completed"
+      | "cancelled"
       wa_message_status: "queued" | "sent" | "delivered" | "read" | "failed"
       wa_message_type:
-        | "text"
-        | "template"
-        | "image"
-        | "video"
-        | "document"
-        | "audio"
+      | "text"
+      | "template"
+      | "image"
+      | "video"
+      | "document"
+      | "audio"
       workflow_status:
-        | "pending"
-        | "configured"
-        | "active"
-        | "error"
-        | "suspended"
+      | "pending"
+      | "configured"
+      | "active"
+      | "error"
+      | "suspended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1802,116 +1805,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {

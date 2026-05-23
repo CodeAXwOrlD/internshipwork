@@ -54,7 +54,8 @@ export const COMING_SOON_SLUGS: string[] = [
 ];
 
 /** Check if a service (by DB slug or route slug) is in Coming Soon mode */
-export function isComingSoon(dbSlug: string): boolean {
+export function isComingSoon(dbSlug: string, isUnlocked?: boolean): boolean {
+  if (isUnlocked) return false;
   const routeSlug = getRouteSlug(dbSlug);
   return COMING_SOON_SLUGS.includes(routeSlug) || COMING_SOON_SLUGS.includes(dbSlug);
 }

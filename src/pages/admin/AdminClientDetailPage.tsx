@@ -492,7 +492,7 @@ export default function AdminClientDetailPage() {
               <Pencil className="mr-2 h-4 w-4" /> Edit Client Info
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setAssignModalOpen(true)}>
-              <Package className="mr-2 h-4 w-4" /> Assign Services
+              <Package className="mr-2 h-4 w-4" /> Manage Services
             </DropdownMenuItem>
             <DropdownMenuItem>
               <FileText className="mr-2 h-4 w-4" /> Generate Invoice

@@ -14,6 +14,7 @@ interface AssignedService {
   is_active: boolean;
   plan_id: string | null;
   reset_period: string | null;
+  is_coming_soon_unlocked: boolean;
 }
 
 interface ClientProfile {
@@ -67,7 +68,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   const fetchAll = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
-    
+
     // 1. Fetch client record
     const { data: clientData } = await supabase
       .from("clients")
@@ -100,7 +101,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     // 3. Fetch assigned services
     const { data: csData } = await supabase
       .from("client_services")
-      .select("id, service_id, usage_limit, usage_consumed, is_active, plan_id, reset_period")
+      .select("id, service_id, usage_limit, usage_consumed, is_active, plan_id, reset_period, is_coming_soon_unlocked")
       .eq("client_id", clientData.id)
       .eq("is_active", true);
 
@@ -129,6 +130,8 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
           is_active: cs.is_active ?? true,
           plan_id: cs.plan_id,
           reset_period: cs.reset_period,
+          is_coming_soon_unlocked: cs.is_coming_soon_unlocked ?? false,
+
         };
       }));
     } else {
@@ -142,6 +145,18 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     fetchAll();
   }, [fetchAll]);
 
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("client_services_changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "client_services" },
+        () => { fetchAll(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchAll]);
   const primaryColor = admin?.primary_color || "#3B82F6";
   const secondaryColor = admin?.secondary_color || "#10B981";
 

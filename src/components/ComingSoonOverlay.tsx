@@ -42,7 +42,8 @@ export default function ComingSoonOverlay({ title, description, features }: Comi
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center p-4 md:p-8 bg-slate-950/45 backdrop-blur-[5px] overflow-hidden">
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes cardEnter {
           from { opacity: 0; transform: scale(0.95) translateY(10px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
@@ -59,7 +60,7 @@ export default function ComingSoonOverlay({ title, description, features }: Comi
           animation: floatGlow 6s ease-in-out infinite;
         }
       `}} />
-      
+
       <div className="max-w-lg w-full bg-slate-900 border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-white animate-card-in">
         {/* Glow effects */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/30 rounded-full blur-3xl pointer-events-none animate-float-glow" />
@@ -114,11 +115,10 @@ export default function ComingSoonOverlay({ title, description, features }: Comi
             <button
               onClick={handleNotifyClick}
               disabled={isNotified}
-              className={`flex-[1.5] py-3 px-4 font-bold rounded-2xl text-xs md:text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.96] ${
-                isNotified
+              className={`flex-[1.5] py-3 px-4 font-bold rounded-2xl text-xs md:text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.96] ${isNotified
                   ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-default"
                   : "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30"
-              }`}
+                }`}
             >
               <Bell className="h-4 w-4" />
               {isNotified ? "Subscribed!" : "Notify Me"}

@@ -72,6 +72,7 @@ interface PendingRequest {
   client_id: string;
   service_id: string;
   plan_id: string | null;
+  admin_id: string;
   message: string | null;
   created_at: string;
   clients: { company_name: string } | null;
@@ -271,7 +272,7 @@ export default function AdminDashboardHome() {
     if (!admin) return;
     const { data: clientIds } = await supabase.from("clients").select("id").eq("admin_id", admin.id);
     if (!clientIds?.length) return;
-    
+
     const ids = clientIds.map(c => c.id);
     const { data } = await supabase
       .from("service_purchase_requests")
@@ -279,35 +280,52 @@ export default function AdminDashboardHome() {
       .in("client_id", ids)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
-      
+
     if (data) {
       setPendingRequests(data as any[]);
     }
   }
 
+  // CHANGE TO
   const handleRequestAction = async (requestId: string, status: "approved" | "rejected") => {
     try {
+      const req = pendingRequests.find(r => r.id === requestId);
+
+      // Delete any OTHER rows for same client+service (old approved/rejected ones)
+      // but NOT the current pending row we want to update
+      if (req) {
+        await supabase
+          .from("service_purchase_requests")
+          .delete()
+          .eq("client_id", req.client_id)
+          .eq("service_id", req.service_id)
+          .neq("id", requestId);
+      }
+
+      // Now update the current row
       const { error } = await supabase
         .from("service_purchase_requests")
-        .update({ status })
+        .update({ status, reviewed_at: new Date().toISOString() })
         .eq("id", requestId);
       if (error) throw error;
-      
-      // Remove from list
+
+      // Flip is_coming_soon_unlocked on client_services
+      if (req) {
+        await supabase
+          .from("client_services")
+          .update({ is_coming_soon_unlocked: status === "approved" })
+          .eq("client_id", req.client_id)
+          .eq("service_id", req.service_id);
+      }
+
       setPendingRequests(prev => prev.filter(r => r.id !== requestId));
-      
-      // Update alerts count
       setAlerts(prev => ({
         ...prev,
         pendingActivation: Math.max(0, prev.pendingActivation - 1)
       }));
-      
-      if (status === "approved") {
-        // Find the client ID for navigation
-        const req = pendingRequests.find(r => r.id === requestId);
-        if (req) {
-          navigate(`/admin/clients/${req.client_id}?tab=services`);
-        }
+
+      if (status === "approved" && req) {
+        navigate(`/admin/clients/${req.client_id}?tab=services`);
       }
     } catch (err: any) {
       console.error("Failed to update request status:", err);
@@ -334,7 +352,7 @@ export default function AdminDashboardHome() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 rounded-3xl bg-gradient-to-br from-primary/10 via-white to-accent/10 border border-primary/20 shadow-sm relative overflow-hidden group mb-8"
@@ -365,7 +383,7 @@ export default function AdminDashboardHome() {
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="flex flex-wrap gap-3 text-sm">
             {alerts.pendingActivation > 0 && (
-              <span 
+              <span
                 className="cursor-pointer hover:underline text-yellow-700 font-medium"
                 onClick={() => navigate("/admin/clients")}
               >
@@ -465,21 +483,21 @@ export default function AdminDashboardHome() {
                       {req.services?.name}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(req.created_at), "MMM d, yyyy 'at' h:mm a")} 
+                      {format(new Date(req.created_at), "MMM d, yyyy 'at' h:mm a")}
                       {req.message && ` • Note: "${req.message}"`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                       onClick={() => handleRequestAction(req.id, "rejected")}
                     >
                       Reject
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
                       onClick={() => handleRequestAction(req.id, "approved")}
                     >

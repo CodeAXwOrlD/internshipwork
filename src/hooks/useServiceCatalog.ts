@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/contexts/ClientContext";
+import { isComingSoon } from "@/lib/service-routes";
 
 interface ServicePlan {
   id: string;
@@ -58,14 +59,17 @@ export function useServiceCatalog() {
         { data: requests },
       ] = await Promise.all([
         supabase.from("services").select("id, name, slug, icon_url, description, category, features").eq("is_active", true).neq("slug", "ai-voice-receptionist").neq("slug", "voice-receptionist").order("name"),
-        supabase.from("client_services").select("service_id, is_active, usage_limit, usage_consumed, reset_period, plan_id").eq("client_id", client.id),
+        supabase.from("client_services").select("service_id, is_active, usage_limit, usage_consumed, reset_period, plan_id, is_coming_soon_unlocked").eq("client_id", client.id),
         supabase.from("service_plans").select("id, plan_name, plan_tier, price_per_unit, monthly_price, usage_limit, features_included, is_active, service_id").eq("is_active", true),
-        supabase.from("service_purchase_requests").select("id, service_id, status, created_at").eq("client_id", client.id).in("status", ["pending"]),
+        supabase.from("service_purchase_requests").select("id, service_id, status, created_at").eq("client_id", client.id).in("status", ["pending", "approved"]),
       ]);
 
       // A service is unlocked if the client has an active client_services record for it
       const clientServiceMap = new Map(
         (clientServices ?? []).filter((c) => c.is_active).map((c) => [c.service_id, c])
+      );
+      const approvedRequestIds = new Set(
+        (requests ?? []).filter(r => r.status === "approved").map(r => r.service_id)
       );
       const plansByService = new Map<string, ServicePlan[]>();
       (plans ?? []).forEach((p) => {
@@ -82,7 +86,8 @@ export function useServiceCatalog() {
 
       return (allServices ?? []).map((s) => {
         const cs = clientServiceMap.get(s.id);
-        const isUnlocked = !!cs;
+        const isComingSoonSvc = isComingSoon(s.slug);
+        const isUnlocked = !!cs && (!isComingSoonSvc || !!cs.is_coming_soon_unlocked);
         const request = requestMap.get(s.id);
 
         const lock_reason = !isUnlocked

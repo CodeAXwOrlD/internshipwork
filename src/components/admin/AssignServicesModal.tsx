@@ -36,6 +36,8 @@ type ServiceItem = {
   name: string;
   category: string;
   base_price: number;
+  slug: string;
+  existing_is_coming_soon_unlocked: boolean | null;
   base_pricing_model: string;
   description: string | null;
   admin_price: number | null;
@@ -52,6 +54,7 @@ type ServiceItem = {
     id: string;
     plan_name: string;
     plan_tier: string | null;
+
     usage_limit: number | null;
     monthly_price: number | null;
     price_per_unit: number | null;
@@ -61,6 +64,7 @@ type ServiceItem = {
 type ServiceConfig = {
   selected: boolean;
   expanded: boolean;
+  isComingSoonUnlocked: boolean;
   planId: string | null; // null = custom
   usageLimit: number;
   resetPeriod: string;
@@ -95,7 +99,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
         supabase.from("services").select("*").eq("is_active", true).neq("slug", "ai-voice-receptionist").neq("slug", "voice-receptionist").order("category").order("name"),
         supabase.from("admin_pricing").select("service_id, custom_price_per_unit, markup_percentage"),
         supabase.from("service_plans").select("*").eq("is_active", true),
-        supabase.from("client_services").select("service_id, plan_id, usage_limit, usage_consumed, reset_period, is_active").eq("client_id", clientId),
+        supabase.from("client_services").select("service_id, plan_id, usage_limit, usage_consumed, reset_period, is_active, is_coming_soon_unlocked").eq("client_id", clientId),
       ]);
 
       const pricingMap = new Map(pricingRes.data?.map((p) => [p.service_id, p]) || []);
@@ -118,6 +122,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
           id: s.id,
           name: s.name,
           category: s.category,
+          slug: s.slug,
           base_price: Number(s.base_price),
           base_pricing_model: s.base_pricing_model,
           description: s.description,
@@ -126,6 +131,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
           has_admin_pricing: !!pricing,
           already_assigned: !!assigned && assigned.is_active !== false,
           is_deactivated: !!assigned && assigned.is_active === false,
+          existing_is_coming_soon_unlocked: assigned?.is_coming_soon_unlocked ?? null,
           existing_plan_id: assigned?.plan_id || null,
           existing_usage_limit: assigned?.usage_limit || null,
           existing_usage_consumed: assigned?.usage_consumed ?? null,
@@ -146,6 +152,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
         initial[s.id] = {
           selected: s.already_assigned,
           expanded: s.already_assigned,
+          isComingSoonUnlocked: s.existing_is_coming_soon_unlocked ?? false,
           planId: s.existing_plan_id || (s.plans.length > 0 ? s.plans[0].id : null),
           usageLimit: s.existing_usage_limit || s.plans[0]?.usage_limit || 100,
           resetPeriod: s.existing_reset_period || "monthly",
@@ -253,6 +260,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
           plan_id: cfg.planId || null,
           is_active: true,
           usage_limit: cfg.usageLimit,
+          is_coming_soon_unlocked: cfg.isComingSoonUnlocked,
           reset_period: cfg.resetPeriod as any,
           assigned_by: adminData,
           assigned_at: new Date().toISOString(),
@@ -405,13 +413,13 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                   <span className="font-medium text-sm text-foreground">{service.name}</span>
-                                   {service.already_assigned && (
-                                     <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">Assigned</Badge>
-                                   )}
-                                   {service.is_deactivated && (
-                                     <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">Deactivated</Badge>
-                                   )}
+                                  <span className="font-medium text-sm text-foreground">{service.name}</span>
+                                  {service.already_assigned && (
+                                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">Assigned</Badge>
+                                  )}
+                                  {service.is_deactivated && (
+                                    <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">Deactivated</Badge>
+                                  )}
                                 </div>
                                 {service.is_deactivated && (
                                   <div className="flex items-center gap-2 mt-1">
@@ -420,110 +428,125 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
                                     </p>
                                   </div>
                                 )}
-                                 {service.already_assigned && (
-                                   <div className="mt-1.5">
-                                     <Button
-                                       variant="outline"
-                                       size="sm"
-                                       className="h-7 px-2 text-[10px] sm:text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         if (confirm(`Unassign "${service.name}" from ${clientCompanyName}?`)) {
-                                           unassignMutation.mutate(service.id);
-                                         }
-                                       }}
-                                       disabled={unassignMutation.isPending}
-                                     >
-                                       <Trash2 className="h-3 w-3 mr-1" />
-                                       Unassign
-                                     </Button>
-                                   </div>
-                                 )}
-                                 {canSelect ? (
-                                   <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">₹{service.admin_price?.toFixed(2)} / {unit}</p>
-                                 ) : (
-                                   <p className="text-[11px] sm:text-xs text-destructive flex items-center gap-1 mt-0.5">
-                                     <AlertTriangle className="h-3 w-3" /> Set pricing first
-                                   </p>
-                                 )}
-                               </div>
-                               {cfg.selected && (
-                                 <Button
-                                   variant="ghost" size="icon" className="h-8 w-8 shrink-0 focus-visible:ring-0"
-                                   onClick={(e) => { e.stopPropagation(); updateConfig(service.id, { expanded: !cfg.expanded }); }}
-                                 >
-                                   {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                 </Button>
-                               )}
-                             </div>
+                                {service.already_assigned && (
+                                  <div className="mt-1.5">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 px-2 text-[10px] sm:text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (confirm(`Unassign "${service.name}" from ${clientCompanyName}?`)) {
+                                          unassignMutation.mutate(service.id);
+                                        }
+                                      }}
+                                      disabled={unassignMutation.isPending}
+                                    >
+                                      <Trash2 className="h-3 w-3 mr-1" />
+                                      Unassign
+                                    </Button>
+                                  </div>
+                                )}
+                                {canSelect ? (
+                                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">₹{service.admin_price?.toFixed(2)} / {unit}</p>
+                                ) : (
+                                  <p className="text-[11px] sm:text-xs text-destructive flex items-center gap-1 mt-0.5">
+                                    <AlertTriangle className="h-3 w-3" /> Set pricing first
+                                  </p>
+                                )}
+                              </div>
+                              {cfg.selected && (
+                                <Button
+                                  variant="ghost" size="icon" className="h-8 w-8 shrink-0 focus-visible:ring-0"
+                                  onClick={(e) => { e.stopPropagation(); updateConfig(service.id, { expanded: !cfg.expanded }); }}
+                                >
+                                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </Button>
+                              )}
+                            </div>
 
                             {/* Expanded config */}
                             {isExpanded && (
                               <div className="border-t bg-muted/30 p-4 space-y-4">
-                                 {/* Plan selection */}
-                                 {service.plans.length > 0 && (
-                                   <div className="space-y-1.5">
-                                     <Label className="text-xs font-semibold">Select Plan</Label>
-                                     <RadioGroup
-                                       value={cfg.planId || "custom"}
-                                       onValueChange={(v) => {
-                                         const plan = service.plans.find((p) => p.id === v);
-                                         updateConfig(service.id, {
-                                           planId: v === "custom" ? null : v,
-                                           usageLimit: plan?.usage_limit || cfg.usageLimit,
-                                         });
-                                       }}
-                                       className="grid grid-cols-1 sm:grid-cols-2 gap-2"
-                                     >
-                                       {service.plans.map((plan) => (
-                                         <div key={plan.id} className="flex items-center gap-2 rounded-md border p-2.5 bg-background">
-                                           <RadioGroupItem value={plan.id} id={`plan-${plan.id}`} />
-                                           <div className="flex-1 min-w-0">
-                                              <Label htmlFor={`plan-${plan.id}`} className="text-xs font-medium truncate block">
-                                                {plan.plan_name}
-                                                {plan.plan_tier && <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[9px] uppercase">{plan.plan_tier}</Badge>}
-                                              </Label>
-                                              <p className="text-[10px] text-muted-foreground">
-                                                {plan.usage_limit ? `${plan.usage_limit} ${unit}s` : "Unlimited"}
-                                              </p>
-                                           </div>
-                                         </div>
-                                       ))}
-                                       <div className="flex items-center gap-2 rounded-md border p-2.5 bg-background">
-                                         <RadioGroupItem value="custom" id={`plan-${service.id}-custom`} />
-                                         <Label htmlFor={`plan-${service.id}-custom`} className="text-xs font-medium">Custom Limits</Label>
-                                       </div>
-                                     </RadioGroup>
-                                   </div>
-                                 )}
+                                {/* Plan selection */}
+                                {service.plans.length > 0 && (
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Select Plan</Label>
+                                    <RadioGroup
+                                      value={cfg.planId || "custom"}
+                                      onValueChange={(v) => {
+                                        const plan = service.plans.find((p) => p.id === v);
+                                        updateConfig(service.id, {
+                                          planId: v === "custom" ? null : v,
+                                          usageLimit: plan?.usage_limit || cfg.usageLimit,
+                                        });
+                                      }}
+                                      className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                                    >
+                                      {service.plans.map((plan) => (
+                                        <div key={plan.id} className="flex items-center gap-2 rounded-md border p-2.5 bg-background">
+                                          <RadioGroupItem value={plan.id} id={`plan-${plan.id}`} />
+                                          <div className="flex-1 min-w-0">
+                                            <Label htmlFor={`plan-${plan.id}`} className="text-xs font-medium truncate block">
+                                              {plan.plan_name}
+                                              {plan.plan_tier && <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[9px] uppercase">{plan.plan_tier}</Badge>}
+                                            </Label>
+                                            <p className="text-[10px] text-muted-foreground">
+                                              {plan.usage_limit ? `${plan.usage_limit} ${unit}s` : "Unlimited"}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                      <div className="flex items-center gap-2 rounded-md border p-2.5 bg-background">
+                                        <RadioGroupItem value="custom" id={`plan-${service.id}-custom`} />
+                                        <Label htmlFor={`plan-${service.id}-custom`} className="text-xs font-medium">Custom Limits</Label>
+                                      </div>
+                                    </RadioGroup>
+                                  </div>
+                                )}
 
-                                 {/* Usage limit */}
-                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                   <div className="space-y-1.5">
-                                     <Label className="text-[11px] font-medium uppercase text-muted-foreground">Usage Limit</Label>
-                                     <Input
-                                       type="number"
-                                       min={1}
-                                       max={1000000}
-                                       className="h-9"
-                                       value={cfg.usageLimit}
-                                       onChange={(e) => updateConfig(service.id, { usageLimit: Math.max(1, parseInt(e.target.value) || 1) })}
-                                     />
-                                     <p className="text-[10px] text-muted-foreground">{cfg.usageLimit} {unit}s / {cfg.resetPeriod}</p>
-                                   </div>
-                                   <div className="space-y-1.5">
-                                     <Label className="text-[11px] font-medium uppercase text-muted-foreground">Reset Period</Label>
-                                     <Select value={cfg.resetPeriod} onValueChange={(v) => updateConfig(service.id, { resetPeriod: v })}>
-                                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                       <SelectContent>
-                                         <SelectItem value="daily">Daily</SelectItem>
-                                         <SelectItem value="weekly">Weekly</SelectItem>
-                                         <SelectItem value="monthly">Monthly</SelectItem>
-                                         <SelectItem value="never">Never (Unlimited)</SelectItem>
-                                       </SelectContent>
-                                     </Select>
-                                   </div>
-                                 </div>
+                                {/* Usage limit */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-medium uppercase text-muted-foreground">Usage Limit</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={1000000}
+                                      className="h-9"
+                                      value={cfg.usageLimit}
+                                      onChange={(e) => updateConfig(service.id, { usageLimit: Math.max(1, parseInt(e.target.value) || 1) })}
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">{cfg.usageLimit} {unit}s / {cfg.resetPeriod}</p>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-medium uppercase text-muted-foreground">Reset Period</Label>
+                                    <Select value={cfg.resetPeriod} onValueChange={(v) => updateConfig(service.id, { resetPeriod: v })}>
+                                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="daily">Daily</SelectItem>
+                                        <SelectItem value="weekly">Weekly</SelectItem>
+                                        <SelectItem value="monthly">Monthly</SelectItem>
+                                        <SelectItem value="never">Never (Unlimited)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+
+                                {/* Price summary */}
+                                {/* Coming Soon Unlock toggle */}
+                                {(service.slug === "social-media-automation" || service.slug === "social-media" || service.slug === "socialium" || service.slug === "voice-agent" || service.slug === "ai-voice-agent") && (
+                                  <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                                    <div>
+                                      <p className="text-xs font-semibold text-foreground">Unlock Coming Soon</p>
+                                      <p className="text-[10px] text-muted-foreground">Remove Coming Soon restriction for this client</p>
+                                    </div>
+                                    <Checkbox
+                                      checked={cfg.isComingSoonUnlocked}
+                                      onCheckedChange={(v) => updateConfig(service.id, { isComingSoonUnlocked: !!v })}
+                                    />
+                                  </div>
+                                )}
 
                                 {/* Price summary */}
                                 {service.admin_price && (

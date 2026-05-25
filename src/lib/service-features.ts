@@ -45,6 +45,14 @@ export const SERVICE_FEATURES: Record<string, string[]> = {
     "Hashtag Generator",
     "Post Scheduling",
   ],
+  "first-voice": [
+    "24/7 AI Receptionist",
+    "Intelligent Call Routing",
+    "Voicemail Transcription",
+    "Custom Greeting Scripts",
+    "Call Transfer to Team",
+    "Missed Call Notifications",
+  ],
 };
 
 /** Get features for a service by its DB slug or route slug */

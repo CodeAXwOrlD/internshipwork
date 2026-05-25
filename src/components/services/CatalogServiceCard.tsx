@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export function CatalogServiceCard({
   service, primaryColor, onViewDetails, onRequestAccess,
 }: CatalogServiceCardProps) {
   const navigate = useNavigate();
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
   const features = getServiceFeatures(getRouteSlug(service.slug));
   const Icon = getServiceIcon(service.slug) || Sparkles;
 
@@ -48,8 +50,8 @@ export function CatalogServiceCard({
       : "border-border";
 
   return (
-    <Card className={cn("relative overflow-hidden transition-all hover-lift", borderClass)}>
-      <CardContent className="pt-6 space-y-4">
+    <Card className={cn("relative overflow-hidden transition-all hover-lift flex flex-col h-full", borderClass)}>
+      <CardContent className="pt-6 space-y-4 flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-start gap-3">
           {service.icon_url ? (
@@ -124,24 +126,30 @@ export function CatalogServiceCard({
         )}
 
         {/* Features (always visible) */}
-        <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Features
-          </p>
-          <div className="space-y-1.5">
-            {features.slice(0, 4).map((f, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-foreground">
-                <Check className="h-3 w-3 shrink-0 text-emerald-500" />
-                {f}
-              </div>
-            ))}
-            {features.length > 4 && (
-              <p className="text-[11px] text-muted-foreground pl-5">
-                +{features.length - 4} more features
-              </p>
-            )}
+        {features.length > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Features
+            </p>
+            <div className="space-y-1.5">
+              {(showAllFeatures ? features : features.slice(0, 4)).map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-foreground">
+                  <Check className="h-3 w-3 shrink-0 text-emerald-500" />
+                  {f}
+                </div>
+              ))}
+              {features.length > 4 && (
+                <button 
+                  onClick={() => setShowAllFeatures(!showAllFeatures)}
+                  className="text-[11px] font-medium pl-5 hover:underline focus:outline-none"
+                  style={{ color: primaryColor }}
+                >
+                  {showAllFeatures ? "Show less" : `+${features.length - 4} more features`}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Available plans preview for locked */}
         {service.is_locked && service.available_plans.length > 0 && (
@@ -165,7 +173,7 @@ export function CatalogServiceCard({
         )}
 
         {/* Action buttons */}
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-2 pt-1 mt-auto">
           {isUnlocked ? (
             <Button
               size="sm"

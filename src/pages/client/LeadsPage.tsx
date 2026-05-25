@@ -39,7 +39,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { initiateInstantCall } from "@/lib/instant-call";
 import {
-  DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors,
+  DndContext, closestCorners, DragEndEvent, PointerSensor, useSensor, useSensors, useDroppable, DragOverlay, DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext, verticalListSortingStrategy, useSortable,
@@ -481,6 +481,15 @@ export default function LeadsPage() {
               <SelectItem value="manual">Manual</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={statusFilters[0] || "all"} onValueChange={v => setStatusFilters(v === "all" ? [] : [v])}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {STATUSES.map(s => (
+                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={temperatureFilter} onValueChange={v => setTemperatureFilter(v as any)}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Temperature" /></SelectTrigger>
             <SelectContent>
@@ -611,52 +620,105 @@ function KanbanView({ leads, onStatusChange, onViewDetail, onEdit, onDelete, onA
   onAddLead: () => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
     const { active, over } = event;
     if (!over) return;
     const overId = String(over.id);
-    // over.id could be a status column
+    
+    // Check if we dropped on a status column directly
     if (STATUSES.includes(overId as any)) {
       onStatusChange(String(active.id), overId);
+      return;
+    }
+
+    // Otherwise, we dropped on another lead (reordering/moving)
+    const overLead = leads.find(l => l.id === overId);
+    if (overLead) {
+      onStatusChange(String(active.id), overLead.status);
     }
   };
 
+  const activeLead = activeId ? leads.find(l => l.id === activeId) : null;
+
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-4 overflow-x-auto pb-4">
-        {STATUSES.map(status => {
-          const columnLeads = leads.filter(l => l.status === status);
-          return (
-            <div key={status} className={`min-w-[280px] flex-1 rounded-lg border-t-4 ${STATUS_HEADER_COLORS[status]} bg-muted/30`}
-              id={status}>
-              <div className="p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold capitalize text-sm">{status}</h3>
-                  <Badge variant="secondary" className="text-xs">{columnLeads.length}</Badge>
-                </div>
-              </div>
-              <SortableContext items={columnLeads.map(l => l.id)} strategy={verticalListSortingStrategy}>
-                <div className="p-2 space-y-2 min-h-[100px]"
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={() => { }}>
-                  {columnLeads.map(lead => (
-                    <KanbanCard key={lead.id} lead={lead} onView={onViewDetail}
-                      onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} />
-                  ))}
-                  {columnLeads.length === 0 && (
-                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                      <p className="text-xs text-muted-foreground">No {status} leads</p>
-                      <p className="text-xs text-muted-foreground mt-1">Drag leads here</p>
-                    </div>
-                  )}
-                </div>
-              </SortableContext>
-            </div>
-          );
-        })}
+        {STATUSES.map(status => (
+          <KanbanColumn 
+            key={status}
+            status={status}
+            leads={leads}
+            onViewDetail={onViewDetail}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onStatusChange={onStatusChange}
+          />
+        ))}
       </div>
+      <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
+        {activeLead ? (
+          <div className="w-[264px]">
+            <KanbanCardUI 
+              lead={activeLead} 
+              onView={() => {}} 
+              onEdit={() => {}} 
+              onDelete={() => {}} 
+              onStatusChange={() => {}}
+              isOverlay={true}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
+  );
+}
+
+function KanbanColumn({ status, leads, onViewDetail, onEdit, onDelete, onStatusChange }: {
+  status: string;
+  leads: Lead[];
+  onViewDetail: (l: Lead) => void;
+  onEdit: (l: Lead) => void;
+  onDelete: (l: Lead) => void;
+  onStatusChange: (id: string, status: string) => void;
+}) {
+  const { setNodeRef } = useDroppable({ id: status });
+  const columnLeads = leads.filter(l => l.status === status);
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      className={`min-w-[280px] flex-1 rounded-lg border-t-4 ${STATUS_HEADER_COLORS[status]} bg-muted/30 flex flex-col`}
+    >
+      <div className="p-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold capitalize text-sm">{status}</h3>
+          <Badge variant="secondary" className="text-xs">{columnLeads.length}</Badge>
+        </div>
+      </div>
+      <SortableContext items={columnLeads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+        <div className="p-2 space-y-2 flex-1 min-h-[150px]"
+          onDragOver={e => e.preventDefault()}
+          onDrop={() => { }}>
+          {columnLeads.map(lead => (
+            <KanbanCard key={lead.id} lead={lead} onView={onViewDetail}
+              onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} />
+          ))}
+          {columnLeads.length === 0 && (
+            <div className="border-2 border-dashed rounded-lg p-6 text-center mt-2 h-full flex flex-col items-center justify-center pointer-events-none opacity-50">
+              <p className="text-xs text-muted-foreground">No {status} leads</p>
+              <p className="text-xs text-muted-foreground mt-1">Drag leads here</p>
+            </div>
+          )}
+        </div>
+      </SortableContext>
+    </div>
   );
 }
 
@@ -667,20 +729,45 @@ function KanbanCard({ lead, onView, onEdit, onDelete, onStatusChange }: {
   onDelete: (l: Lead) => void;
   onStatusChange: (id: string, status: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
+  const style = { 
+    transform: isDragging ? undefined : CSS.Translate.toString(transform), 
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
 
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <KanbanCardUI lead={lead} onView={onView} onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} isOverlay={false} />
+    </div>
+  );
+}
+
+function KanbanCardUI({ lead, onView, onEdit, onDelete, onStatusChange, isOverlay }: {
+  lead: Lead;
+  onView: (l: Lead) => void;
+  onEdit: (l: Lead) => void;
+  onDelete: (l: Lead) => void;
+  onStatusChange: (id: string, status: string) => void;
+  isOverlay: boolean;
+}) {
   const score = lead.lead_score ?? 0;
   const scoreColor = score > 70 ? "bg-primary/15 text-primary" : score > 40 ? "bg-accent text-accent-foreground" : "bg-destructive/10 text-destructive";
   const stars = Math.ceil((lead.interest_level || 0) / 2);
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}
-      className="bg-card rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => onView(lead)}>
+    <div 
+      className={cn(
+        "bg-card rounded-lg border p-3 shadow-sm transition-all cursor-pointer relative",
+        isOverlay ? "shadow-xl ring-2 ring-primary scale-[1.02]" : "hover:shadow-md"
+      )}
+      onClick={(e) => {
+        if (!isOverlay) onView(lead);
+      }}>
       <div className="flex items-start justify-between mb-2">
-        <div className="flex-1 min-w-0" {...listeners}>
-          <GripVertical className="h-3 w-3 text-muted-foreground inline mr-1" />
+        <div className="flex-1 min-w-0 flex items-center">
+          <GripVertical className="h-4 w-4 text-muted-foreground/30 hover:text-muted-foreground transition-colors mr-1 shrink-0" />
+          <h4 className="font-semibold text-sm truncate">{lead.name || "Unknown"}</h4>
         </div>
         <div className="flex items-center gap-1">
           <TemperatureBadge score={lead.lead_score} />
@@ -688,11 +775,10 @@ function KanbanCard({ lead, onView, onEdit, onDelete, onStatusChange }: {
         </div>
       </div>
       {isLeadStale(lead) && (
-        <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-500/10 rounded px-1.5 py-0.5 mb-1">
+        <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-500/10 rounded px-1.5 py-0.5 mb-2 mt-1 w-fit">
           <Clock className="h-2.5 w-2.5" /> Stale — no activity for 7+ days
         </div>
       )}
-      <h4 className="font-semibold text-sm truncate">{lead.name || "Unknown"}</h4>
       {lead.company && <p className="text-xs text-muted-foreground truncate">{lead.company}</p>}
       <div className="mt-2 space-y-1">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -730,7 +816,7 @@ function KanbanCard({ lead, onView, onEdit, onDelete, onStatusChange }: {
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
+            <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isOverlay}>
               <MoreVertical className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>

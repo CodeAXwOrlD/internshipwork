@@ -311,11 +311,32 @@ export default function AdminDashboardHome() {
 
       // Flip is_coming_soon_unlocked on client_services
       if (req) {
-        await supabase
+        const { data: existingService } = await supabase
           .from("client_services")
-          .update({ is_coming_soon_unlocked: status === "approved" })
+          .select("id")
           .eq("client_id", req.client_id)
-          .eq("service_id", req.service_id);
+          .eq("service_id", req.service_id)
+          .maybeSingle();
+
+        if (existingService) {
+          await supabase
+            .from("client_services")
+            .update({ is_coming_soon_unlocked: status === "approved" })
+            .eq("id", existingService.id);
+        } else if (status === "approved" && admin) {
+          await supabase
+            .from("client_services")
+            .insert({
+              client_id: req.client_id,
+              service_id: req.service_id,
+              is_active: true,
+              is_coming_soon_unlocked: true,
+              usage_limit: 100,
+              reset_period: "monthly",
+              assigned_by: admin.id,
+              assigned_at: new Date().toISOString()
+            });
+        }
       }
 
       setPendingRequests(prev => prev.filter(r => r.id !== requestId));

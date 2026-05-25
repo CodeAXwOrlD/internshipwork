@@ -105,7 +105,8 @@ const getSocialCacheFromStorage = () => {
     const uid = localStorage.getItem("last_user_id");
     const cached = uid ? localStorage.getItem(`pixora_social_cache_${uid}`) : null;
     return cached ? JSON.parse(cached) : null;
-  } catch {
+  } catch (e) {
+    console.warn("Failed to load from localStorage:", e);
     return null;
   }
 };
@@ -118,7 +119,9 @@ const saveSocialCacheToStorage = () => {
     if (uid && socialPageCache) {
       localStorage.setItem(`pixora_social_cache_${uid}`, JSON.stringify(socialPageCache));
     }
-  } catch { }
+  } catch (e) {
+    console.warn("Failed to save to localStorage:", e);
+  }
 };
 
 const ensureSocialCache = () => {

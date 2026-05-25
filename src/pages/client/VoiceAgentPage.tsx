@@ -54,7 +54,8 @@ const getAgentCacheFromStorage = () => {
     const uid = localStorage.getItem("last_user_id");
     const cached = uid ? localStorage.getItem(`pixora_agent_cache_${uid}`) : null;
     return cached ? JSON.parse(cached) : null;
-  } catch {
+  } catch (e) {
+    console.warn("Failed to load from localStorage:", e);
     return null;
   }
 };
@@ -67,7 +68,9 @@ const saveAgentCacheToStorage = () => {
     if (uid && agentPageCache) {
       localStorage.setItem(`pixora_agent_cache_${uid}`, JSON.stringify(agentPageCache));
     }
-  } catch { }
+  } catch (e) {
+    console.warn("Failed to save to localStorage:", e);
+  }
 };
 
 /* ─── Main Page ─── */

@@ -22,6 +22,16 @@ import { Separator } from "@/components/ui/separator";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Props = {
   open: boolean;
@@ -90,6 +100,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
   const [configs, setConfigs] = useState<Record<string, ServiceConfig>>({});
   const [categoryOpen, setCategoryOpen] = useState<Record<string, boolean>>({ voice: true, messaging: true, social_media: true });
   const [successResult, setSuccessResult] = useState<{ count: number; names: string[] } | null>(null);
+  const [unassignConfirm, setUnassignConfirm] = useState<{ serviceId: string; serviceName: string } | null>(null);
 
   // Fetch services with pricing and assignment status
   const { data: services = [], isLoading } = useQuery({
@@ -294,7 +305,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
     mutationFn: async (serviceId: string) => {
       const { error } = await supabase
         .from("client_services")
-        .update({ is_active: false })
+        .update({ is_active: false, is_coming_soon_unlocked: false })
         .eq("client_id", clientId)
         .eq("service_id", serviceId);
       if (error) throw error;
@@ -436,9 +447,7 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
                                       className="h-7 px-2 text-[10px] sm:text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (confirm(`Unassign "${service.name}" from ${clientCompanyName}?`)) {
-                                          unassignMutation.mutate(service.id);
-                                        }
+                                        setUnassignConfirm({ serviceId: service.id, serviceName: service.name });
                                       }}
                                       disabled={unassignMutation.isPending}
                                     >
@@ -593,14 +602,14 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between items-center pt-1 border-t border-muted-foreground/10">
+              <div className="flex justify-between items-end pt-1 border-t border-muted-foreground/10 flex-wrap gap-1">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold text-foreground">Total Estimated</span>
                   {summary.totalProfit > 0 && (
                     <span className="text-[9px] text-green-600 font-medium">Earn +₹{summary.totalProfit.toLocaleString()}</span>
                   )}
                 </div>
-                <div className="text-sm font-bold text-foreground">
+                <div className="text-sm font-bold text-foreground text-right shrink-0">
                   ₹{summary.totalCost.toLocaleString()}<span className="text-[10px] font-normal text-muted-foreground">/mo</span>
                 </div>
               </div>
@@ -622,6 +631,30 @@ export default function AssignServicesModal({ open, onOpenChange, clientId, clie
           </Button>
         </div>
       </DialogContent>
+
+      <AlertDialog open={!!unassignConfirm} onOpenChange={(o) => !o && setUnassignConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unassign Service</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unassign "{unassignConfirm?.serviceName}" from <span className="font-semibold text-foreground">{clientCompanyName}</span>?<br/><br/>
+              They will lose access immediately and it will be moved back to "Coming Soon".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (unassignConfirm) unassignMutation.mutate(unassignConfirm.serviceId);
+                setUnassignConfirm(null);
+              }} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, Unassign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

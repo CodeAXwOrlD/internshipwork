@@ -108,16 +108,24 @@ export default function AdminBillingPage() {
       if (!data?.length) return [];
 
       const clientIds = [...new Set(data.map((i) => i.client_id).filter(Boolean))] as string[];
-      const { data: clients } = await supabase
-        .from("clients")
-        .select("id, company_name, user_id")
-        .in("id", clientIds);
+      let clients: any[] = [];
+      if (clientIds.length > 0) {
+        const { data: cData } = await supabase
+          .from("clients")
+          .select("id, company_name, user_id")
+          .in("id", clientIds);
+        clients = cData || [];
+      }
 
-      const userIds = clients?.map((c) => c.user_id) || [];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, email")
-        .in("user_id", userIds);
+      const userIds = [...new Set(clients.map((c) => c.user_id).filter(Boolean))];
+      let profiles: any[] = [];
+      if (userIds.length > 0) {
+        const { data: pData } = await supabase
+          .from("profiles")
+          .select("user_id, email")
+          .in("user_id", userIds);
+        profiles = pData || [];
+      }
 
       const clientMap = new Map(clients?.map((c) => [c.id, c]) || []);
       const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);

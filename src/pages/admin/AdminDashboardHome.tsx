@@ -254,7 +254,7 @@ export default function AdminDashboardHome() {
       supabase.from("client_services").select("usage_consumed, usage_limit")
         .in("client_id", ids).eq("is_active", true),
       supabase.from("invoices").select("id", { count: "exact", head: true })
-        .eq("admin_id", admin.id).in("status", ["draft", "sent"]),
+        .eq("admin_id", admin.id).in("status", ["sent", "overdue"]),
     ]);
 
     const nearLimit = usageRes.data?.filter(s =>
@@ -415,7 +415,12 @@ export default function AdminDashboardHome() {
               <span>{alerts.nearUsageLimit} client(s) reached 80%+ usage limit</span>
             )}
             {alerts.pendingInvoices > 0 && (
-              <span>{alerts.pendingInvoices} invoice(s) pending payment</span>
+              <span
+                className="cursor-pointer hover:underline text-yellow-700 font-medium"
+                onClick={() => navigate("/admin/billing")}
+              >
+                {alerts.pendingInvoices} invoice(s) pending payment (Click to manage)
+              </span>
             )}
           </AlertDescription>
         </Alert>
@@ -601,13 +606,13 @@ export default function AdminDashboardHome() {
 
       {/* Recent Clients - Table on desktop, Cards on mobile */}
       <Card className="bg-white/95 border-primary/20 shadow-[0_4px_20px_-4px_rgba(48,79,159,0.1)] overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-sidebar-border/5">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-sidebar-border/5 pr-20 md:pr-28">
           <CardTitle className="text-lg font-bold text-slate-800">Recent Clients</CardTitle>
           <Button variant="ghost" size="sm" className="text-primary font-bold" onClick={() => navigate("/admin/clients")}>
             View All <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 pr-20 md:pr-28">
           {recentClients.length > 0 ? (
             <>
               {/* Mobile: Card layout */}
@@ -629,11 +634,11 @@ export default function AdminDashboardHome() {
                     </p>
                     <div className="flex items-center justify-between">
                       <Badge variant="secondary" className="text-[10px]">{client.active_services} Services</Badge>
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => navigate(`/admin/clients/${client.id}`)}>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={(e) => { e.stopPropagation(); navigate(`/admin/clients/${client.id}`); }}>
                           <Eye className="h-3.5 w-3.5 mr-1" /> View
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditClientId(client.id)}>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={(e) => { e.stopPropagation(); setEditClientId(client.id); }}>
                           <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
                         </Button>
                       </div>
@@ -676,13 +681,13 @@ export default function AdminDashboardHome() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8"
-                            onClick={() => navigate(`/admin/clients/${client.id}`)}>
+                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/clients/${client.id}`); }}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8"
-                            onClick={() => setEditClientId(client.id)}>
+                            onClick={(e) => { e.stopPropagation(); setEditClientId(client.id); }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </div>

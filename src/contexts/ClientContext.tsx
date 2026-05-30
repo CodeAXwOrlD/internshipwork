@@ -43,6 +43,8 @@ interface ClientContextType {
   primaryColor: string;
   secondaryColor: string;
   isLoading: boolean;
+  /** Increments each time client_services changes via realtime — use as a query-key dep */
+  servicesVersion: number;
   refetchClient: () => Promise<void>;
 }
 
@@ -53,6 +55,7 @@ const ClientContext = createContext<ClientContextType>({
   primaryColor: "#3B82F6",
   secondaryColor: "#10B981",
   isLoading: true,
+  servicesVersion: 0,
   refetchClient: async () => { },
 });
 
@@ -64,6 +67,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState<AdminBranding | null>(null);
   const [assignedServices, setAssignedServices] = useState<AssignedService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [servicesVersion, setServicesVersion] = useState(0);
 
   const fetchAll = useCallback(async () => {
     if (!user) return;
@@ -147,12 +151,17 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
+    const channelName = `client_services_ctx_${user.id}`;
     const channel = supabase
-      .channel("client_services_changes")
+      .channel(channelName)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "client_services" },
-        () => { fetchAll(); }
+        { event: "*", schema: "public", table: "client_services" },
+        () => {
+          fetchAll();
+          // Bump version so dependent hooks (useServiceCatalog etc.) auto-refetch
+          setServicesVersion((v) => v + 1);
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -180,6 +189,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
         primaryColor,
         secondaryColor,
         isLoading,
+        servicesVersion,
         refetchClient: fetchAll,
       }}
     >

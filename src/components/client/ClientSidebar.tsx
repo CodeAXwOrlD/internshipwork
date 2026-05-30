@@ -257,7 +257,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
 
                   {/* Coming Soon indicator */}
                   {isComingSoon(item.routeSlug, item.isUnlocked) && !collapsed && (
-                    <span className="ml-auto mr-1 text-[8px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20 leading-none shrink-0 hidden md:inline-block">
+                    <span className="ml-auto mr-1 text-[8px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20 leading-none shrink-0 inline-block">
                       Soon
                     </span>
                   )}

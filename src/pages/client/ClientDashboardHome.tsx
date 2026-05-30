@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,12 +25,15 @@ import {
   Headphones,
   Sparkles,
   TrendingUp,
+  Lock,
+  Send,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { useClientServices } from "@/hooks/useClientServices";
-import { getServicePath, SERVICE_LABEL_MAP } from "@/lib/service-routes";
+import { getServicePath, SERVICE_LABEL_MAP, isComingSoon } from "@/lib/service-routes";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface DashboardStats {
   activeServices: number;
@@ -276,11 +279,7 @@ export default function ClientDashboardHome() {
       (s) => s.service_slug === slug || s.service_slug === `ai-${slug}`,
     );
 
-  const getUsageColor = (pct: number) => {
-    if (pct >= 90) return "text-red-400";
-    if (pct >= 75) return "text-orange-400";
-    return "text-emerald-400";
-  };
+
 
   return (
     <div className="space-y-8">
@@ -350,7 +349,7 @@ export default function ClientDashboardHome() {
           icon={<Package className="h-5 w-5" />}
           color={primaryColor}
           label="Active Services"
-          value={stats?.activeServices ?? 0}
+          value={assignedServices.length}
           linkText="Manage"
           onLinkClick={() => navigate("/client/usage")}
         />
@@ -402,95 +401,29 @@ export default function ClientDashboardHome() {
             const isOverLimit = pct >= 100;
             const isNearLimit = pct >= 75 && !isOverLimit;
 
-            return (
-              <div
-                key={svc.id}
-                className="group hover:-translate-y-1 transition-transform duration-200"
-              >
-                <Card className="flex flex-col h-full bg-white/95 border-primary/20 shadow-[0_4px_20px_-4px_rgba(48,79,159,0.1)] transition-shadow duration-200 overflow-hidden group-hover:shadow-[0_12px_30px_-10px_rgba(48,79,159,0.2)] group-hover:border-primary/50">
-                  <div className="h-1 bg-slate-100 w-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full transition-[width] duration-700 ease-out",
-                        isOverLimit
-                          ? "bg-red-500"
-                          : isNearLimit
-                            ? "bg-orange-400"
-                            : "bg-primary",
-                      )}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <CardContent className="pt-8 flex-1 space-y-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="rounded-2xl p-3 bg-white/5 border border-white/10 group-hover:bg-primary/10 group-hover:border-primary/20 transition-colors">
-                          <ServiceIcon
-                            slug={svc.service_slug}
-                            color={primaryColor}
-                            size={24}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-lg font-bold text-slate-800 tracking-tight truncate leading-tight group-hover:text-primary transition-colors">
-                            {SERVICE_LABEL_MAP[
-                              svc.service_slug as keyof typeof SERVICE_LABEL_MAP
-                            ] || svc.service_name}
-                          </p>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] uppercase tracking-tighter mt-1 bg-primary/5 border-primary/10 text-primary"
-                          >
-                            {svc.service_category}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
+            const isUnknown = svc.service_name === "Unknown" || !svc.service_slug;
+            const displayName = isUnknown ? "Leads" : (SERVICE_LABEL_MAP[svc.service_slug as keyof typeof SERVICE_LABEL_MAP] || svc.service_name);
+            const displayCategory = isUnknown ? "LEADS" : svc.service_category;
+            const displaySlug = isUnknown ? "leads" : svc.service_slug;
+            const displayPath = isUnknown ? "/client/leads" : getServicePath(svc.service_slug);
+            const svcIsComingSoon = !isUnknown && isComingSoon(svc.service_slug, svc.is_coming_soon_unlocked);
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-bold mb-1">
-                        <span className="text-slate-400 uppercase tracking-widest text-[9px]">
-                          Resource Usage
-                        </span>
-                        <span className={getUsageColor(pct)}>{pct}%</span>
-                      </div>
-                      <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                        <div
-                          className={cn(
-                            "h-full transition-[width] duration-700 ease-out",
-                            pct >= 90
-                              ? "bg-red-500"
-                              : pct >= 75
-                                ? "bg-orange-500"
-                                : "bg-emerald-500",
-                          )}
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="text-slate-500 font-medium">
-                          {svc.usage_consumed.toLocaleString()} /{" "}
-                          {svc.usage_limit.toLocaleString()} units
-                        </span>
-                        <span className="text-slate-500 italic">
-                          Resets {svc.reset_period || "monthly"}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <div className="px-6 pb-6">
-                    <Button
-                      size="lg"
-                      className="w-full text-white font-bold rounded-xl shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-shadow hover:scale-[1.02] active:scale-[0.98]"
-                      style={{ backgroundColor: primaryColor }}
-                      onClick={() => navigate(getServicePath(svc.service_slug))}
-                    >
-                      Access Console
-                      <ArrowRight className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Button>
-                  </div>
-                </Card>
-              </div>
+            return (
+              <DashboardServiceCard
+                key={svc.id}
+                svc={svc}
+                pct={pct}
+                isOverLimit={isOverLimit}
+                isNearLimit={isNearLimit}
+                displayName={displayName}
+                displayCategory={displayCategory}
+                displaySlug={displaySlug}
+                displayPath={displayPath}
+                svcIsComingSoon={svcIsComingSoon}
+                primaryColor={primaryColor}
+                client={client}
+                navigate={navigate}
+              />
             );
           })}
         </div>
@@ -746,6 +679,236 @@ function QuickActionButton({
   );
 }
 
+const getUsageColor = (pct: number) => {
+  if (pct >= 90) return "text-red-400";
+  if (pct >= 75) return "text-orange-400";
+  return "text-emerald-400";
+};
+
+function DashboardServiceCard({
+  svc,
+  pct,
+  isOverLimit,
+  isNearLimit,
+  displayName,
+  displayCategory,
+  displaySlug,
+  displayPath,
+  svcIsComingSoon,
+  primaryColor,
+  client,
+  navigate,
+}: {
+  svc: any;
+  pct: number;
+  isOverLimit: boolean;
+  isNearLimit: boolean;
+  displayName: string;
+  displayCategory: string;
+  displaySlug: string;
+  displayPath: string;
+  svcIsComingSoon: boolean;
+  primaryColor: string;
+  client: any;
+  navigate: (path: string) => void;
+}) {
+  const [requesting, setRequesting] = useState(false);
+
+  const handleRequestAccess = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!client) return;
+    setRequesting(true);
+    try {
+      // 1. Insert into service_purchase_requests
+      const { error: requestError } = await supabase
+        .from("service_purchase_requests")
+        .insert({
+          client_id: client.id,
+          service_id: svc.service_id,
+          plan_id: svc.plan_id || null,
+          admin_id: client.admin_id,
+          status: "pending",
+          message: `Request access to ${displayName} from client dashboard`,
+        });
+
+      if (requestError) {
+        if (requestError.code === "23505") {
+          toast.error("You already have a pending request for this service.");
+          return;
+        }
+        throw requestError;
+      }
+
+      // 2. Try to notify admin (silently ignore if RLS restricts admin table queries)
+      try {
+        const { data: admin } = await supabase
+          .from("admins")
+          .select("user_id")
+          .eq("id", client.admin_id)
+          .maybeSingle();
+
+        if (admin?.user_id) {
+          await supabase.from("notifications").insert({
+            user_id: admin.user_id,
+            title: "Service Access Request",
+            message: `${client.company_name} requested access to "${displayName}".`,
+            type: "info" as const,
+            action_url: `/admin/clients/${client.id}`,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn("Failed to notify admin via DB notifications:", notifyErr);
+      }
+
+      toast.success("Access request sent to your administrator");
+    } catch (err) {
+      console.error("Request access error:", err);
+      toast.error("Failed to send request");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "group hover:-translate-y-1 transition-transform duration-200",
+        svcIsComingSoon && "opacity-80"
+      )}
+    >
+      <Card
+        className={cn(
+          "flex flex-col h-full bg-white/95 border-primary/20 shadow-[0_4px_20px_-4px_rgba(48,79,159,0.1)] transition-shadow duration-200 overflow-hidden",
+          svcIsComingSoon
+            ? "hover:shadow-[0_12px_30px_-10px_rgba(100,100,100,0.15)]"
+            : "group-hover:shadow-[0_12px_30px_-10px_rgba(48,79,159,0.2)] group-hover:border-primary/50"
+        )}
+      >
+        {/* Top progress bar */}
+        <div className="h-1 bg-slate-100 w-full overflow-hidden">
+          <div
+            className={cn(
+              "h-full transition-[width] duration-700 ease-out",
+              svcIsComingSoon
+                ? "bg-slate-300"
+                : isOverLimit
+                  ? "bg-red-500"
+                  : isNearLimit
+                    ? "bg-orange-400"
+                    : "bg-primary",
+            )}
+            style={{ width: svcIsComingSoon ? "100%" : `${pct}%` }}
+          />
+        </div>
+
+        <CardContent className="pt-8 flex-1 space-y-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="rounded-2xl p-3 bg-white/5 border border-white/10 group-hover:bg-primary/10 group-hover:border-primary/20 transition-colors">
+                <ServiceIcon
+                  slug={displaySlug}
+                  color={primaryColor}
+                  size={24}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold text-slate-800 tracking-tight truncate leading-tight group-hover:text-primary transition-colors">
+                  {displayName}
+                </p>
+                {svcIsComingSoon ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-500 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md mt-1">
+                    <Sparkles className="h-2.5 w-2.5" />
+                    Coming Soon
+                  </span>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] uppercase tracking-tighter mt-1 bg-primary/5 border-primary/10 text-primary"
+                  >
+                    {displayCategory}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {svcIsComingSoon ? (
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-center">
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  This service is coming soon. Request access from your administrator to get early access.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-slate-400 uppercase tracking-widest text-[9px]">
+                    Resource Usage
+                  </span>
+                  <span className={getUsageColor(pct)}>{pct}%</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                  <div
+                    className={cn(
+                      "h-full transition-[width] duration-700 ease-out",
+                      pct >= 90
+                        ? "bg-red-500"
+                        : pct >= 75
+                          ? "bg-orange-500"
+                          : "bg-emerald-500",
+                    )}
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-slate-500 font-medium">
+                    {svc.usage_consumed.toLocaleString()} /{" "}
+                    {svc.usage_limit.toLocaleString()} units
+                  </span>
+                  <span className="text-slate-500 italic">
+                    Resets {svc.reset_period || "monthly"}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </CardContent>
+
+        <div className="px-6 pb-6">
+          {svcIsComingSoon ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                <Lock className="h-3 w-3" />
+                Locked Interface
+              </div>
+              <Button
+                size="lg"
+                className="w-full text-white font-bold rounded-xl shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                style={{ backgroundColor: primaryColor }}
+                disabled={requesting}
+                onClick={handleRequestAccess}
+              >
+                <Send className="mr-2 h-4 w-4 text-white" />
+                {requesting ? "Transmitting..." : "Request Access from Admin"}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="lg"
+              className="w-full text-white font-bold rounded-xl shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-shadow hover:scale-[1.02] active:scale-[0.98]"
+              style={{ backgroundColor: primaryColor }}
+              onClick={() => navigate(displayPath)}
+            >
+              Access Console
+              <ArrowRight className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </Button>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function ServiceIcon({
   slug,
   color,
@@ -757,6 +920,8 @@ function ServiceIcon({
 }) {
   const props = { size, style: { color } };
   switch (slug) {
+    case "leads":
+      return <Users {...props} />;
     case "voice-telecaller":
       return <Phone {...props} />;
     case "voice-receptionist":

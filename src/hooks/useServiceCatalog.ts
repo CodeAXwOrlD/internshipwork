@@ -45,10 +45,11 @@ export interface CatalogService {
 }
 
 export function useServiceCatalog() {
-  const { client } = useClient();
+  const { client, servicesVersion } = useClient();
 
   const { data: services = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ["service-catalog", client?.id],
+    // servicesVersion in the key ensures automatic refetch when admin toggles a service
+    queryKey: ["service-catalog", client?.id, servicesVersion],
     queryFn: async () => {
       if (!client) return [];
 

@@ -45,24 +45,50 @@ export function ServiceCard({ service, primaryColor }: ServiceCardProps) {
     if (!client) return;
     setRequesting(true);
     try {
-      const { data: admin } = await supabase
-        .from("admins")
-        .select("user_id")
-        .eq("id", client.admin_id)
-        .maybeSingle();
+      // 1. Insert into service_purchase_requests
+      const { error: requestError } = await supabase
+        .from("service_purchase_requests")
+        .insert({
+          client_id: client.id,
+          service_id: service.id,
+          plan_id: null,
+          admin_id: client.admin_id,
+          status: "pending",
+          message: `Request access to ${service.name} from service catalog`,
+        });
 
-      if (!admin) throw new Error("Admin not found");
+      if (requestError) {
+        if (requestError.code === "23505") {
+          toast.error("You already have a pending request for this service.");
+          return;
+        }
+        throw requestError;
+      }
 
-      await supabase.from("notifications").insert({
-        user_id: admin.user_id,
-        title: "Service Access Request",
-        message: `${client.company_name} requested access to "${service.name}".`,
-        type: "info" as const,
-        action_url: `/admin/clients/${client.id}`,
-      });
+      // 2. Try to notify admin
+      try {
+        const { data: admin } = await supabase
+          .from("admins")
+          .select("user_id")
+          .eq("id", client.admin_id)
+          .maybeSingle();
+
+        if (admin?.user_id) {
+          await supabase.from("notifications").insert({
+            user_id: admin.user_id,
+            title: "Service Access Request",
+            message: `${client.company_name} requested access to "${service.name}".`,
+            type: "info" as const,
+            action_url: `/admin/clients/${client.id}`,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn("Failed to notify admin:", notifyErr);
+      }
 
       toast.success("Access request sent to your administrator");
-    } catch {
+    } catch (err) {
+      console.error("Request access error:", err);
       toast.error("Failed to send request");
     } finally {
       setRequesting(false);
@@ -78,7 +104,7 @@ export function ServiceCard({ service, primaryColor }: ServiceCardProps) {
         className={cn(
           "relative h-full overflow-hidden transition-all duration-300 bg-white border-slate-200/60 shadow-sm",
           service.is_locked
-            ? "opacity-80 grayscale-[0.5]"
+            ? "opacity-80"
             : "hover:shadow-md cursor-pointer hover:border-primary/20"
         )}
         onClick={handleClick}
@@ -132,13 +158,13 @@ export function ServiceCard({ service, primaryColor }: ServiceCardProps) {
                   Locked Interface
                 </div>
                 <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs h-10 rounded-xl border-slate-200 hover:bg-black text-slate-600 transition-all active:scale-95"
+                  size="lg"
+                  className="w-full text-white font-bold h-11 rounded-xl shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  style={{ backgroundColor: primaryColor || "#304f9f" }}
                   disabled={requesting}
                   onClick={handleRequestAccess}
                 >
-                  <Send className="mr-2 h-3.5 w-3.5 text-primary" />
+                  <Send className="mr-2 h-3.5 w-3.5 text-white" />
                   {requesting ? "Transmitting..." : "Initialize Access Request"}
                 </Button>
               </div>

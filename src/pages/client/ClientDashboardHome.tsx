@@ -836,7 +836,7 @@ function DashboardServiceCard({
             {svcIsComingSoon ? (
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-center">
                 <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  This service is coming soon. Request access from your administrator to get early access.
+                  This service is coming soon. Request access from your administrator to get access.
                 </p>
               </div>
             ) : (

@@ -51,6 +51,7 @@ export const SERVICE_LABEL_MAP: Record<string, string> = {
 export const COMING_SOON_SLUGS: string[] = [
   "voice-agent",
   "social-media",
+  "live-chat",
 ];
 
 /** Check if a service (by DB slug or route slug) is in Coming Soon mode */

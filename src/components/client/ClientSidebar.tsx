@@ -14,7 +14,8 @@ import {
   History as HistoryIcon,
   ChevronsLeft,
   ChevronsRight,
-  LifeBuoy
+  LifeBuoy,
+  Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClient } from "@/contexts/ClientContext";
@@ -57,6 +58,7 @@ export default function ClientSidebar({ open, onClose, collapsed, onToggleCollap
             { title: "Inbox", icon: MessageSquare, path: `${getServicePath(slug)}?tab=inbox` },
             { title: "Template", icon: FileText, path: `${getServicePath(slug)}?tab=template` },
             { title: "AI Settings", icon: BotIcon, path: `${getServicePath(slug)}?tab=ai-settings` },
+            { title: "Follow-ups", icon: Clock, path: `${getServicePath(slug)}?tab=followups` },
           ]
         };
       }

@@ -59,6 +59,8 @@ export default function AdminWhatsAppBotsPage() {
     panel_url: "",
     api_key: "",
     phone_id: "",
+    meta_access_token: "",
+    waba_id: "",
     client_id: "",
     ai_context: "You are a helpful assistant for Pixora.",
   });
@@ -73,6 +75,8 @@ export default function AdminWhatsAppBotsPage() {
     panel_url: string;
     api_key: string;
     phone_id: string;
+    meta_access_token: string;
+    waba_id: string;
     phone_number_id: string;
     client_id: string;
     ai_context: string;
@@ -149,7 +153,9 @@ export default function AdminWhatsAppBotsPage() {
           api_config: {
             panel_url: botData.panel_url,
             api_key: botData.api_key,
-            phone_id: botData.phone_id
+            phone_id: botData.phone_id,
+            meta_access_token: botData.meta_access_token,
+            waba_id: botData.waba_id
           },
           // Map phone_id to phone_number_id for webhook identification
           phone_number_id: botData.phone_id,
@@ -172,9 +178,15 @@ export default function AdminWhatsAppBotsPage() {
         panel_url: "", 
         api_key: "", 
         phone_id: "", 
-        phone_number_id: "", 
-        client_id: "" 
+        meta_access_token: "",
+        waba_id: "",
+        client_id: "",
+        ai_context: "You are a helpful assistant for Pixora."
       });
+    },
+    onError: (error: any) => {
+      console.error("Create bot error:", error);
+      toast.error(`Failed to create bot: ${error.message || JSON.stringify(error)}`);
     }
   });
 
@@ -187,7 +199,9 @@ export default function AdminWhatsAppBotsPage() {
           api_config: botData.provider_type === "api" ? {
             panel_url: botData.panel_url,
             api_key: botData.api_key,
-            phone_id: botData.phone_id
+            phone_id: botData.phone_id,
+            meta_access_token: botData.meta_access_token,
+            waba_id: botData.waba_id
           } : {},
           phone_number_id: botData.phone_number_id,
           client_id: botData.client_id || null,
@@ -202,6 +216,10 @@ export default function AdminWhatsAppBotsPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-wa-bots"] });
       toast.success("WhatsApp Bot updated successfully");
       setIsEditOpen(false);
+    },
+    onError: (error: any) => {
+      console.error("Update bot error:", error);
+      toast.error(`Failed to update bot: ${error.message || JSON.stringify(error)}`);
     }
   });
 
@@ -213,6 +231,10 @@ export default function AdminWhatsAppBotsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-wa-bots"] });
       toast.success("Bot deleted");
+    },
+    onError: (error: any) => {
+      console.error("Delete bot error:", error);
+      toast.error(`Failed to delete bot: ${error.message || JSON.stringify(error)}`);
     }
   });
 
@@ -234,7 +256,7 @@ export default function AdminWhatsAppBotsPage() {
         application_id: bot.id,
         phoneNoId: bot.api_config?.phone_id,
         baseUrl: bot.api_config?.panel_url
-      }, bot.api_config?.api_key);
+      }, bot.api_config?.meta_access_token || bot.api_config?.api_key);
       
       toast.success("Test message sent!");
       setIsTestOpen(false);
@@ -332,6 +354,8 @@ export default function AdminWhatsAppBotsPage() {
                     panel_url: bot.api_config?.panel_url || "",
                     api_key: bot.api_config?.api_key || "",
                     phone_id: bot.api_config?.phone_id || "",
+                    meta_access_token: bot.api_config?.meta_access_token || "",
+                    waba_id: bot.api_config?.waba_id || "",
                     phone_number_id: (bot as any).phone_number_id || "",
                     client_id: (bot as any).client_id || "",
                     ai_context: (bot as any).ai_context || "",
@@ -368,6 +392,8 @@ export default function AdminWhatsAppBotsPage() {
               <Input placeholder="Panel URL (e.g. https://app.whapihub.com/api)" value={newBot.panel_url} onChange={e => setNewBot({...newBot, panel_url: e.target.value})} />
               <Input placeholder="API Key" type="password" value={newBot.api_key} onChange={e => setNewBot({...newBot, api_key: e.target.value})} />
               <Input placeholder="Phone ID" value={newBot.phone_id} onChange={e => setNewBot({...newBot, phone_id: e.target.value})} />
+              <Input placeholder="Meta Access Token (for templates sync)" type="password" value={newBot.meta_access_token} onChange={e => setNewBot({...newBot, meta_access_token: e.target.value})} />
+              <Input placeholder="Meta WABA ID (for templates sync)" value={newBot.waba_id} onChange={e => setNewBot({...newBot, waba_id: e.target.value})} />
             </div>
 
             <div className="space-y-2">
@@ -415,7 +441,7 @@ export default function AdminWhatsAppBotsPage() {
           <DialogFooter>
             <Button 
               onClick={() => createBotMutation.mutate(newBot)} 
-              disabled={!newBot.name || !newBot.client_id || !newBot.api_key}
+              disabled={!newBot.name || !newBot.client_id || (!newBot.api_key && !newBot.meta_access_token)}
               className="w-full"
             >
               Save & Link Bot
@@ -496,6 +522,14 @@ export default function AdminWhatsAppBotsPage() {
                 <div className="space-y-2">
                   <Label className="text-xs">Phone ID</Label>
                   <Input value={editBot.phone_id} onChange={e => setEditBot({...editBot, phone_id: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Meta Access Token (for templates sync)</Label>
+                  <Input type="password" value={editBot.meta_access_token} onChange={e => setEditBot({...editBot, meta_access_token: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Meta WABA ID (for templates sync)</Label>
+                  <Input value={editBot.waba_id} onChange={e => setEditBot({...editBot, waba_id: e.target.value})} />
                 </div>
               </div>
             )}

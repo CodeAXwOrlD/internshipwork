@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Palette,
@@ -35,13 +35,8 @@ interface AdminSidebarProps {
 }
 
 export default function AdminSidebar({ open, onClose }: AdminSidebarProps) {
-  const location = useLocation();
   const { admin, logo, primaryColor } = useAdmin();
 
-  const isActive = (path: string) => {
-    if (path === "/admin") return location.pathname === "/admin";
-    return location.pathname.startsWith(path);
-  };
 
   return (
     <>
@@ -78,26 +73,30 @@ export default function AdminSidebar({ open, onClose }: AdminSidebarProps) {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
           {navItems.map((item) => {
-            const active = isActive(item.path);
+            const isClients = item.path === "/admin/clients";
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === "/admin"}
+                end={!isClients}
                 onClick={onClose}
-                className={cn(
+                className={({ isActive }) => cn(
                   "group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
-                  active
+                  isActive
                     ? "text-white shadow-lg shadow-primary/10"
                     : "text-slate-200 hover:text-white hover:bg-white/5"
                 )}
-                style={active ? { backgroundColor: primaryColor || "#304f9f" } : undefined}
+                style={({ isActive }) => isActive ? { backgroundColor: primaryColor || "#304f9f" } : undefined}
               >
-                <item.icon className={cn(
-                  "h-5 w-5 shrink-0 transition-transform group-hover:scale-110",
-                  active ? "text-white" : "text-slate-300 group-hover:text-white"
-                )} />
-                <span className="truncate">{item.title}</span>
+                {({ isActive }) => (
+                  <>
+                    <item.icon className={cn(
+                      "h-5 w-5 shrink-0 transition-transform group-hover:scale-110",
+                      isActive ? "text-white" : "text-slate-300 group-hover:text-white"
+                    )} />
+                    <span className="truncate">{item.title}</span>
+                  </>
+                )}
               </NavLink>
             );
           })}

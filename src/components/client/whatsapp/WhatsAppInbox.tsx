@@ -7,6 +7,22 @@ import {
   useLayoutEffect,
 } from "react";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { AlertCircle, Clock, Plus } from "lucide-react";
+import {
   Search,
   Paperclip,
   Smile,
@@ -233,9 +249,13 @@ const COLUMN_STYLES: Record<string, { bg: string, border: string, badgeBg: strin
 export default function WhatsAppInbox({
   selectedAppId,
   assignedBots,
+  templates = [],
+  onNewChat,
 }: {
   selectedAppId?: string | null;
   assignedBots?: any[];
+  templates?: any[];
+  onNewChat?: () => void;
 }) {
   const { client } = useClient();
   const { toast } = useToast();
@@ -247,6 +267,23 @@ export default function WhatsAppInbox({
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+
+  // Template dialogue state
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+
+  // Status Filter Tag state
+  const [activeFilter, setActiveFilter] = useState<string>('All');
+
+  // Lead Info Sidebar state
+  const [leadInfo, setLeadInfo] = useState<any>(null);
+  const [isLoadingLead, setIsLoadingLead] = useState(false);
+  const [isSavingLead, setIsSavingLead] = useState(false);
+  const [leadFormData, setLeadFormData] = useState<{
+    status: string;
+    follow_up_date: string;
+  }>({ status: '', follow_up_date: '' });
+
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [contactStatuses, setContactStatuses] = useState<Record<string, string>>({});
   const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
@@ -513,7 +550,7 @@ export default function WhatsAppInbox({
                   caption: caption || file.name,
                 },
               },
-              bot.api_config?.api_key,
+              bot.api_config?.meta_access_token || bot.api_config?.api_key,
             );
 
             if (!result.success) throw new Error(result.message);
@@ -761,6 +798,59 @@ export default function WhatsAppInbox({
     }
   }, [activeChatId, client?.id, fetchMessages, dedupeMessagesById]);
 
+  useEffect(() => {
+    if (!activeChatId && !client) {
+      setLeadInfo(null);
+      return;
+    }
+    const fetchLead = async () => {
+      if (!activeChatId || !client) return;
+      setIsLoadingLead(true);
+      const cleanPhone = activeChatId.replace(/^\+/, '');
+      const plusPhone = `+${cleanPhone}`;
+      const { data } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('client_id', client.id)
+        .in('phone', [cleanPhone, plusPhone])
+        .maybeSingle();
+      setLeadInfo(data ?? null);
+      setLeadFormData({
+        status: data?.status ?? 'new',
+        follow_up_date: data?.follow_up_date ?? '',
+      });
+      setIsLoadingLead(false);
+    };
+    void fetchLead();
+  }, [activeChatId, client]);
+
+  const handleSaveLead = async () => {
+    if (!leadInfo?.id || !activeChatId) return;
+    setIsSavingLead(true);
+    const { error } = await supabase
+      .from('leads')
+      .update({
+        status: leadFormData.status as any,
+        follow_up_date: leadFormData.follow_up_date || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', leadInfo.id);
+    if (error) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Lead updated' });
+      setLeadInfo((prev: any) => ({ ...prev, ...leadFormData }));
+      if (leadFormData.status) {
+        const mappedStatus = leadFormData.status === 'new' ? 'New Lead' : 
+                             leadFormData.status === 'contacted' ? 'Follow-UP' :
+                             leadFormData.status === 'qualified' ? 'Demo Pending' :
+                             leadFormData.status === 'converted' ? 'Closed Deal' : 'Junk Leads';
+        await handleUpdateStatus(activeChatId, mappedStatus);
+      }
+    }
+    setIsSavingLead(false);
+  };
+
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !activeChatId || !selectedAppId || !client)
       return;
@@ -777,7 +867,7 @@ export default function WhatsAppInbox({
             phoneNoId: bot.api_config?.phone_id,
             type: "text",
           },
-          bot.api_config?.api_key,
+          bot.api_config?.meta_access_token || bot.api_config?.api_key,
         );
         if (result.success) setMessageInput("");
         else
@@ -890,15 +980,31 @@ export default function WhatsAppInbox({
     }
   };
 
-  const filteredChats = useMemo(
-    () =>
-      chats.filter(
-        (chat) =>
-          chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          chat.phone.includes(searchQuery),
-      ),
-    [chats, searchQuery],
-  );
+  const lastInboundAt = useMemo(() => {
+    const inbound = messages.filter(m => m.direction === 'inbound');
+    if (inbound.length === 0) return null;
+    const latest = inbound[inbound.length - 1];
+    return latest.sent_at ? new Date(latest.sent_at) : null;
+  }, [messages]);
+
+  const isConversationExpired = useMemo(() => {
+    if (!lastInboundAt) return false;
+    const hoursSince = (Date.now() - lastInboundAt.getTime()) / (1000 * 60 * 60);
+    return hoursSince > 24;
+  }, [lastInboundAt]);
+
+  const filteredChats = useMemo(() => {
+    return chats.filter(chat => {
+      const matchesSearch =
+        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        chat.phone.includes(searchQuery);
+
+      const status = contactStatuses[chat.id] ?? 'New Lead';
+      const matchesFilter = activeFilter === 'All' || status === activeFilter;
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [chats, searchQuery, contactStatuses, activeFilter]);
 
   useEffect(() => {
     if (isMobileMode) return;
@@ -1111,38 +1217,51 @@ export default function WhatsAppInbox({
                     <h2 className="pl-3 text-lg font-bold tracking-tight text-slate-900">
                       Messages
                     </h2>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                    <div className="flex items-center gap-1">
+                      {onNewChat && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
+                          className="h-8 w-8 rounded-full text-blue-600 hover:bg-blue-50"
+                          onClick={onNewChat}
+                          title="New Chat"
                         >
-                          <MoreHorizontal className="h-4 w-4" />
+                          <Plus className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                        <DropdownMenuLabel className="text-xs tracking-wider uppercase text-slate-500">Inbox Options</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer gap-2 py-2" onClick={() => setIsSelectionMode(true)}>
-                          <CheckSquare className="h-4 w-4" />
-                          <span>Delete messages</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer gap-2 py-2">
-                          <Filter className="h-4 w-4" />
-                          <span>Filter unread messages</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer gap-2 py-2">
-                          <Archive className="h-4 w-4" />
-                          <span>Archive all conversations</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer gap-2 py-2">
-                          <Settings className="h-4 w-4" />
-                          <span>Inbox Settings</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                          <DropdownMenuLabel className="text-xs tracking-wider uppercase text-slate-500">Inbox Options</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2" onClick={() => setIsSelectionMode(true)}>
+                            <CheckSquare className="h-4 w-4" />
+                            <span>Delete messages</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                            <Filter className="h-4 w-4" />
+                            <span>Filter unread messages</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                            <Archive className="h-4 w-4" />
+                            <span>Archive all conversations</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="cursor-pointer gap-2 py-2">
+                            <Settings className="h-4 w-4" />
+                            <span>Inbox Settings</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                   <div className="relative group flex-1 min-w-0 ml-3">
                     <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-all group-focus-within:text-blue-600" />
@@ -1156,6 +1275,29 @@ export default function WhatsAppInbox({
                 </>
               )}
             </div>
+
+            {/* Filter Tags */}
+            {!isSelectionMode && (
+              <div className="flex-shrink-0 px-4 pb-2 overflow-x-auto">
+                <div className="flex gap-1.5 min-w-max">
+                  {['All', 'New Lead', 'Demo Pending', 'Follow-UP', 'Demo', 'Closed Deal', 'Junk Leads'].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setActiveFilter(tag)}
+                      className={cn(
+                        'px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border',
+                        activeFilter === tag
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* View mode toggle — always visible in its own row */}
             {!isSelectionMode && (
@@ -1695,150 +1837,170 @@ export default function WhatsAppInbox({
 
                   {/* Message input – fixed at bottom, never scrolls */}
                   <div className="flex-shrink-0 border-t border-slate-200/60 bg-white/95 px-2 py-2 md:px-3 md:py-3 backdrop-blur-md w-full">
-                    <input
-                      type="file"
-                      className="hidden"
-                      ref={photoInputRef}
-                      accept="image/*,video/*"
-                      onChange={handleFileChange}
-                    />
-                    <input
-                      type="file"
-                      className="hidden"
-                      ref={docInputRef}
-                      accept=".pdf,.doc,.docx,.txt,.csv,.xls,.xlsx"
-                      onChange={handleFileChange}
-                    />
-                    <input
-                      type="file"
-                      className="hidden"
-                      ref={cameraInputRef}
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileChange}
-                    />
-
-                    <div className="flex items-center gap-0.5 md:gap-1 rounded-2xl md:rounded-3xl border border-slate-200 bg-white px-1 py-1 md:px-2 md:py-1.5 shadow-sm md:shadow-md w-full min-w-0">
-                      {/* Emoji */}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 text-slate-500 hover:bg-slate-100"
-                          >
-                            <Smile className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          side="top"
-                          align="start"
-                          className="w-[280px] p-0 overflow-hidden rounded-2xl border-slate-200 shadow-2xl"
+                    {isConversationExpired ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+                          <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                          <p className="text-xs font-semibold text-amber-800">
+                            Conversation expired. More than 24 hours have passed since the customer's last reply. You must send a template.
+                          </p>
+                        </div>
+                        <Button
+                          className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-9"
+                          onClick={() => setTemplateDialogOpen(true)}
                         >
-                          <div className="bg-white">
-                            <div className="p-3 border-b border-slate-100 bg-slate-50/50">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                Emoji
-                              </p>
-                            </div>
-                            <ScrollArea className="h-56">
-                              <div className="p-2 space-y-3">
-                                {EMOJI_CATEGORIES.map((cat) => (
-                                  <div key={cat.label} className="space-y-1">
-                                    <p className="px-2 text-[9px] font-bold text-slate-400 uppercase">
-                                      {cat.label}
-                                    </p>
-                                    <div className="grid grid-cols-6 gap-1">
-                                      {cat.emojis.map((emoji) => (
-                                        <button
-                                          key={emoji}
-                                          onClick={() => onEmojiSelect(emoji)}
-                                          className="h-9 w-9 flex items-center justify-center rounded-xl hover:bg-blue-50 text-lg transition-all hover:scale-110 active:scale-95"
-                                        >
-                                          {emoji}
-                                        </button>
-                                      ))}
-                                    </div>
+                          <FileText className="h-3.5 w-3.5 mr-2" />
+                          Send Template
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="file"
+                          className="hidden"
+                          ref={photoInputRef}
+                          accept="image/*,video/*"
+                          onChange={handleFileChange}
+                        />
+                        <input
+                          type="file"
+                          className="hidden"
+                          ref={docInputRef}
+                          accept=".pdf,.doc,.docx,.txt,.csv,.xls,.xlsx"
+                          onChange={handleFileChange}
+                        />
+                        <input
+                          type="file"
+                          className="hidden"
+                          ref={cameraInputRef}
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleFileChange}
+                        />
+
+                        <div className="flex items-center gap-0.5 md:gap-1 rounded-2xl md:rounded-3xl border border-slate-200 bg-white px-1 py-1 md:px-2 md:py-1.5 shadow-sm md:shadow-md w-full min-w-0">
+                          {/* Emoji */}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 text-slate-500 hover:bg-slate-100"
+                              >
+                                <Smile className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              side="top"
+                              align="start"
+                              className="w-[280px] p-0 overflow-hidden rounded-2xl border-slate-200 shadow-2xl"
+                            >
+                              <div className="bg-white">
+                                <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    Emoji
+                                  </p>
+                                </div>
+                                <ScrollArea className="h-56">
+                                  <div className="p-2 space-y-3">
+                                    {EMOJI_CATEGORIES.map((cat) => (
+                                      <div key={cat.label} className="space-y-1">
+                                        <p className="px-2 text-[9px] font-bold text-slate-400 uppercase">
+                                          {cat.label}
+                                        </p>
+                                        <div className="grid grid-cols-6 gap-1">
+                                          {cat.emojis.map((emoji) => (
+                                            <button
+                                              key={emoji}
+                                              onClick={() => onEmojiSelect(emoji)}
+                                              className="h-9 w-9 flex items-center justify-center rounded-xl hover:bg-blue-50 text-lg transition-all hover:scale-110 active:scale-95"
+                                            >
+                                              {emoji}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
+                                </ScrollArea>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+
+                          {/* Attachment */}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 text-slate-500 hover:bg-slate-100"
+                              >
+                                <Paperclip className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              side="top"
+                              align="start"
+                              className="w-48 p-2 rounded-2xl border-slate-200 shadow-2xl"
+                            >
+                              <div className="grid gap-1">
+                                {ATTACHMENT_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt.label}
+                                    onClick={() => handleAttachmentClick(opt.label)}
+                                    className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-slate-50 transition-colors group"
+                                  >
+                                    <div
+                                      className="p-1.5 rounded-lg transition-transform group-hover:scale-110"
+                                      style={{
+                                        backgroundColor: `${opt.color}15`,
+                                        color: opt.color,
+                                      }}
+                                    >
+                                      <opt.icon className="h-4 w-4" />
+                                    </div>
+                                    <span className="text-xs font-semibold text-slate-700">
+                                      {opt.label}
+                                    </span>
+                                  </button>
                                 ))}
                               </div>
-                            </ScrollArea>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                            </PopoverContent>
+                          </Popover>
 
-                      {/* Attachment */}
-                      <Popover>
-                        <PopoverTrigger asChild>
+                          <textarea
+                            placeholder="Type a message..."
+                            className="flex-1 min-w-0 resize-none border-none bg-transparent py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-0 focus:outline-none"
+                            rows={1}
+                            value={messageInput}
+                            onChange={(e) => setMessageInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendMessage();
+                              }
+                            }}
+                          />
                           <Button
-                            variant="ghost"
                             size="icon"
-                            className="h-8 w-8 shrink-0 text-slate-500 hover:bg-slate-100"
+                            className={cn(
+                              "h-8 w-8 shrink-0 rounded-2xl transition-all",
+                              messageInput.trim()
+                                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 hover:bg-blue-500"
+                                : "bg-slate-100 text-slate-500",
+                            )}
+                            onClick={handleSendMessage}
+                            disabled={!messageInput.trim() || isSending}
                           >
-                            <Paperclip className="h-4 w-4" />
+                            {isSending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
                           </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          side="top"
-                          align="start"
-                          className="w-48 p-2 rounded-2xl border-slate-200 shadow-2xl"
-                        >
-                          <div className="grid gap-1">
-                            {ATTACHMENT_OPTIONS.map((opt) => (
-                              <button
-                                key={opt.label}
-                                onClick={() => handleAttachmentClick(opt.label)}
-                                className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-slate-50 transition-colors group"
-                              >
-                                <div
-                                  className="p-1.5 rounded-lg transition-transform group-hover:scale-110"
-                                  style={{
-                                    backgroundColor: `${opt.color}15`,
-                                    color: opt.color,
-                                  }}
-                                >
-                                  <opt.icon className="h-4 w-4" />
-                                </div>
-                                <span className="text-xs font-semibold text-slate-700">
-                                  {opt.label}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-
-                      <textarea
-                        placeholder="Type a message..."
-                        className="flex-1 min-w-0 resize-none border-none bg-transparent py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-0 focus:outline-none"
-                        rows={1}
-                        value={messageInput}
-                        onChange={(e) => setMessageInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                      />
-                      <Button
-                        size="icon"
-                        className={cn(
-                          "h-8 w-8 shrink-0 rounded-2xl transition-all",
-                          messageInput.trim()
-                            ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 hover:bg-blue-500"
-                            : "bg-slate-100 text-slate-500",
-                        )}
-                        onClick={handleSendMessage}
-                        disabled={!messageInput.trim() || isSending}
-                      >
-                        {isSending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               ) : (
@@ -1866,7 +2028,171 @@ export default function WhatsAppInbox({
             </AnimatePresence>
           </div>
         )}
+
+        {/* LEAD SIDEBAR — only show on desktop when a chat is active */}
+        {!isMobileMode && activeChatId && (
+          <div className="w-64 2xl:w-72 shrink-0 h-full flex flex-col border-l border-slate-200/60 bg-white overflow-y-auto">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Lead Info</h3>
+            </div>
+
+            {isLoadingLead ? (
+              <div className="flex items-center justify-center py-10 opacity-40">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              </div>
+            ) : leadInfo ? (
+              <div className="p-4 space-y-4">
+                {/* Name & Phone */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contact</p>
+                  <p className="text-sm font-bold text-slate-900">{leadInfo.name || activeChatId}</p>
+                  <p className="text-xs text-slate-500">{leadInfo.phone}</p>
+                </div>
+
+                {/* Notes */}
+                {leadInfo.notes && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notes</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">{leadInfo.notes}</p>
+                  </div>
+                )}
+
+                {/* Follow-up flags */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Follow-ups Sent</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['24h', '48h', '72h'] as const).map(label => {
+                      const key = `followup_${label}_sent` as keyof typeof leadInfo;
+                      return (
+                        <span
+                          key={label}
+                          className={cn(
+                            'px-2 py-0.5 rounded-full text-[10px] font-bold border',
+                            leadInfo[key]
+                              ? 'bg-green-50 text-green-700 border-green-200'
+                              : 'bg-slate-50 text-slate-400 border-slate-200'
+                          )}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Status selector */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lead Status</p>
+                  <Select
+                    value={leadFormData.status}
+                    onValueChange={v => setLeadFormData(prev => ({ ...prev, status: v }))}
+                  >
+                    <SelectTrigger className="h-8 text-xs rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {['new', 'contacted', 'qualified', 'converted', 'lost'].map(s => (
+                        <SelectItem key={s} value={s} className="text-xs capitalize">{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Follow-up date */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Follow-up Date</p>
+                  <Input
+                    type="date"
+                    className="h-8 text-xs rounded-lg"
+                    value={leadFormData.follow_up_date}
+                    onChange={e => setLeadFormData(prev => ({ ...prev, follow_up_date: e.target.value }))}
+                  />
+                </div>
+
+                <Button
+                  className="w-full h-8 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                  onClick={handleSaveLead}
+                  disabled={isSavingLead}
+                >
+                  {isSavingLead ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Save Changes'}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 opacity-30 px-4 text-center">
+                <User className="h-6 w-6 mb-2 text-slate-400" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No lead record found</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Template</DialogTitle>
+            <DialogDescription>
+              Select a pre-approved template to re-open this conversation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="Select a template" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((t: any) => (
+                  <SelectItem key={t.id ?? t.name} value={t.name}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!selectedTemplate || isSending}
+              onClick={async () => {
+                if (!activeChatId || !selectedAppId || !client || !selectedTemplate) return;
+                setIsSending(true);
+                const bot = assignedBots?.find(b => b.id === selectedAppId);
+                try {
+                  const tplObj = templates.find(t => t.name === selectedTemplate);
+                  const tplLang = tplObj?.language || tplObj?.language_code || 'en_US';
+                  const result = await sendWhatsAppMessage(
+                    {
+                      to: activeChatId,
+                      body: selectedTemplate,
+                      type: 'template',
+                      name: selectedTemplate,
+                      language: tplLang,
+                      application_id: selectedAppId,
+                      client_id: client.id,
+                      phoneNoId: bot?.api_config?.phone_id,
+                    },
+                    bot?.api_config?.meta_access_token || bot?.api_config?.api_key,
+                  );
+                  if (result.success) {
+                    toast({ title: 'Template sent' });
+                    setTemplateDialogOpen(false);
+                    setSelectedTemplate('');
+                    await fetchMessages(activeChatId);
+                  } else {
+                    toast({ title: 'Error', description: result.message, variant: 'destructive' });
+                  }
+                } catch (e: any) {
+                  toast({ title: 'Error', description: e.message, variant: 'destructive' });
+                } finally {
+                  setIsSending(false);
+                }
+              }}
+            >
+              {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

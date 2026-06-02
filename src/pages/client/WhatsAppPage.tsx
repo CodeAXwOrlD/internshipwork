@@ -83,6 +83,9 @@ import {
   Phone,
   Bot as BotIcon,
   Loader2,
+  Download,
+  Check,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format, startOfMonth } from "date-fns";
@@ -237,7 +240,7 @@ export default function WhatsAppPage() {
     }
   }, [client?.user_id]);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<any | null>(null);
   const [viewTemplateOpen, setViewTemplateOpen] = useState(false);
@@ -590,7 +593,7 @@ export default function WhatsAppPage() {
 
   const mainTab = useMemo(() => {
     const urlTab = searchParams.get("tab");
-    if (urlTab && ["overview", "inbox", "template", "ai-settings"].includes(urlTab)) {
+    if (urlTab && ["overview", "inbox", "template", "ai-settings", "followups"].includes(urlTab)) {
       return urlTab;
     }
     return localStorage.getItem("leadnest_active_tab") || "overview";
@@ -619,6 +622,7 @@ export default function WhatsAppPage() {
     { id: "inbox", label: "Inbox", icon: MessageSquare },
     { id: "template", label: "Template", icon: FileText },
     { id: "ai-settings", label: "AI Settings", icon: BotIcon },
+    { id: "followups", label: "Follow-ups", icon: Clock },
   ] as const;
 
   // Lock page-level scroll when inbox is active so panels get bounded heights
@@ -966,6 +970,11 @@ export default function WhatsAppPage() {
               <WhatsAppInbox
                 selectedAppId={selectedAppId}
                 assignedBots={assignedBots}
+                templates={templates}
+                onNewChat={() => {
+                  setPhone("");
+                  setSendModalOpen(true);
+                }}
               />
             </motion.div>
           )}
@@ -1019,10 +1028,10 @@ export default function WhatsAppPage() {
                   <Button
                     size="sm"
                     className="font-bold text-xs h-8 md:h-9 px-2 md:px-3"
-                    onClick={() => setTemplateModalOpen(true)}
+                    onClick={() => setImportModalOpen(true)}
                     disabled={!selectedAppId || assignedBots.length === 0}>
-                    <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2" />
-                    <span>Create Template</span>
+                    <Download className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-2" />
+                    <span>Import Template</span>
                   </Button>
                 </div>
               </div>
@@ -1145,7 +1154,25 @@ export default function WhatsAppPage() {
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15 }}
             >
-              <AISettingsTab clientId={client?.id || ""} />
+              <AISettingsTab 
+                clientId={client?.id || ""} 
+              />
+            </motion.div>
+          )}
+
+          {mainTab === "followups" && (
+            <motion.div
+              key="followups"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              <FollowUpSettingsTab 
+                clientId={client?.id || ""} 
+                serviceId={waService?.service_id || ""}
+                templates={templates}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -1177,11 +1204,12 @@ export default function WhatsAppPage() {
         setSelectedLanguage={setSelectedLanguage}
       />
 
-      <CreateTemplateModalWA
-        open={templateModalOpen}
-        onOpenChange={setTemplateModalOpen}
+      <ImportTemplateModalWA
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
         selectedAppId={selectedAppId}
-        onCreated={() => selectedAppId && fetchTemplates(selectedAppId)}
+        templates={templates}
+        onImported={() => selectedAppId && fetchTemplates(selectedAppId)}
       />
 
       <ConfirmDialog
@@ -1221,16 +1249,22 @@ export default function WhatsAppPage() {
 }
 
 /* ─── AI Settings Tab ─── */
-function AISettingsTab({ clientId }: { clientId: string }) {
+function AISettingsTab({ 
+  clientId,
+}: { 
+  clientId: string; 
+}) {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
   const { toast } = useToast();
 
   useEffect(() => {
-    async function fetchAISettings() {
+    async function fetchSettings() {
       if (!clientId) return;
       setIsLoading(true);
+      
       const { data, error } = await supabase
         .from("ai_chatbots" as any)
         .select("*")
@@ -1250,7 +1284,7 @@ function AISettingsTab({ clientId }: { clientId: string }) {
       }
       setIsLoading(false);
     }
-    fetchAISettings();
+    fetchSettings();
   }, [clientId]);
 
   const handleSave = async () => {
@@ -1275,11 +1309,281 @@ function AISettingsTab({ clientId }: { clientId: string }) {
     setIsSaving(false);
   };
 
+  if (isLoading || !settings)
+    return (
+      <div className="p-20 flex flex-col items-center justify-center opacity-40">
+        <RefreshCw className="h-8 w-8 animate-spin mb-4" />
+        <p>Loading settings...</p>
+      </div>
+    );
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-border/50 bg-card/30 backdrop-blur-sm border shadow-xl overflow-hidden">
+        <CardHeader className="border-b border-border/50 bg-muted/20">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-xl md:text-2xl font-black flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl">
+                  <BotIcon className="h-6 w-6 text-primary" />
+                </div>
+                AI Chatbot Configuration
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                Configure how your AI agent interacts with customers on WhatsApp.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3 bg-background/50 p-2 rounded-xl border border-border/50">
+              <Label
+                htmlFor="bot-active"
+                className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2"
+              >
+                Agent Status
+              </Label>
+              <Select
+                value={settings.is_active ? "on" : "off"}
+                onValueChange={(v) =>
+                  setSettings({ ...settings, is_active: v === "on" })
+                }
+              >
+                <SelectTrigger
+                  className={cn(
+                    "w-28 h-9 text-xs font-bold border-none shadow-none focus:ring-0",
+                    settings.is_active ? "text-green-500" : "text-destructive",
+                  )}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="on" className="text-green-500 font-bold">
+                    ● ACTIVE
+                  </SelectItem>
+                  <SelectItem value="off" className="text-destructive font-bold">
+                    ○ DISABLED
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-8 p-6 md:p-8">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
+                  Agent Identity
+                </Label>
+                <Input
+                  className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 text-sm font-medium"
+                  value={settings.name}
+                  onChange={(e) =>
+                    setSettings({ ...settings, name: e.target.value })
+                  }
+                  placeholder="e.g. LeadNest Assistant"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  The name your AI will use when introducing itself.
+                </p>
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
+                    Creativity (Temperature)
+                  </Label>
+                  <Badge
+                    variant="outline"
+                    className="font-mono text-primary border-primary/20 bg-primary/5"
+                  >
+                    {settings.temperature}
+                  </Badge>
+                </div>
+                <div className="px-2">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                    value={settings.temperature}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        temperature: parseFloat(e.target.value),
+                      })
+                    }
+                  />
+                  <div className="flex justify-between mt-2 px-1">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                      Factual/Strict
+                    </span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                      Creative/Human
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-2 mt-8">
+                <h4 className="text-xs font-bold flex items-center gap-2 text-primary">
+                  <Zap className="h-3 w-3" /> Auto-Pilot Mode
+                </h4>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  When enabled, the AI will automatically respond to all incoming
+                  WhatsApp messages using the instructions provided. You can still
+                  intervene and send manual messages from the Inbox at any time.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 flex flex-col">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
+                  System Instructions (Personality)
+                </Label>
+                <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full border">
+                  <Clock className="h-2.5 w-2.5" />
+                  Context Aware
+                </div>
+              </div>
+              <Textarea
+                className="flex-1 min-h-[300px] text-sm leading-relaxed bg-muted/20 border-border/50 focus:border-primary/50 font-medium resize-none p-4"
+                value={settings.system_prompt}
+                onChange={(e) =>
+                  setSettings({ ...settings, system_prompt: e.target.value })
+                }
+                placeholder="Tell the AI how to behave, what to know about your business, and how to handle inquiries..."
+              />
+              <div className="flex items-center gap-2 mt-2">
+                <Badge className="text-[9px] bg-blue-500/10 text-blue-500 border-blue-500/20">
+                  Pro Tip
+                </Badge>
+                <p className="text-[10px] text-muted-foreground">
+                  Describe your products, pricing, and FAQs for better accuracy.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 opacity-60">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                Real-time syncing enabled
+              </p>
+            </div>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full sm:w-auto px-10 h-12 font-black text-sm shadow-xl shadow-primary/20 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {isSaving ? (
+                <RefreshCw className="h-4 w-4 animate-spin mr-3" />
+              ) : (
+                <CheckCheck className="h-5 w-5 mr-3" />
+              )}
+              UPDATE AI AGENT
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ─── Follow-up Settings Tab ─── */
+function FollowUpSettingsTab({
+  clientId,
+  serviceId,
+  templates,
+}: {
+  clientId: string;
+  serviceId: string;
+  templates: any[];
+}) {
+  const [workflowConfig, setWorkflowConfig] = useState<any>({
+    followup_enabled: true,
+    followup_24h_template: "",
+    followup_48h_template: "",
+    followup_72h_template: "",
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSavingWorkflow, setIsSavingWorkflow] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchWorkflow() {
+      if (!clientId || !serviceId) return;
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("client_workflow_instances")
+          .select("custom_config")
+          .eq("client_id", clientId)
+          .eq("service_id", serviceId)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          const config = data.custom_config || {};
+          setWorkflowConfig({
+            followup_enabled: config.followup_enabled !== false,
+            followup_24h_template: config.followup_24h_template || "",
+            followup_48h_template: config.followup_48h_template || "",
+            followup_72h_template: config.followup_72h_template || "",
+          });
+        }
+      } catch (err: any) {
+        toast({
+          title: "Error loading follow-up settings",
+          description: err.message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchWorkflow();
+  }, [clientId, serviceId]);
+
+  const handleSaveWorkflow = async () => {
+    if (!clientId || !serviceId) return;
+    setIsSavingWorkflow(true);
+    try {
+      const { data: existing } = await supabase
+        .from("client_workflow_instances")
+        .select("custom_config")
+        .eq("client_id", clientId)
+        .eq("service_id", serviceId)
+        .maybeSingle();
+
+      const merged = { ...(existing?.custom_config || {}), ...workflowConfig };
+
+      const { error } = await supabase
+        .from("client_workflow_instances")
+        .update({ custom_config: merged })
+        .eq("client_id", clientId)
+        .eq("service_id", serviceId);
+
+      if (error) throw error;
+      toast({ title: "Follow-up settings updated successfully" });
+    } catch (err: any) {
+      toast({
+        title: "Failed to save settings",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingWorkflow(false);
+    }
+  };
+
   if (isLoading)
     return (
       <div className="p-20 flex flex-col items-center justify-center opacity-40">
         <RefreshCw className="h-8 w-8 animate-spin mb-4" />
-        <p>Loading AI settings...</p>
+        <p>Loading follow-up settings...</p>
       </div>
     );
 
@@ -1290,31 +1594,31 @@ function AISettingsTab({ clientId }: { clientId: string }) {
           <div>
             <CardTitle className="text-xl md:text-2xl font-black flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-xl">
-                <BotIcon className="h-6 w-6 text-primary" />
+                <Clock className="h-6 w-6 text-primary" />
               </div>
-              AI Chatbot Configuration
+              Automated Follow-up Settings
             </CardTitle>
             <CardDescription className="text-xs mt-1">
-              Configure how your AI agent interacts with customers on WhatsApp.
+              Configure WhatsApp message templates to be sent automatically at specific time intervals.
             </CardDescription>
           </div>
           <div className="flex items-center gap-3 bg-background/50 p-2 rounded-xl border border-border/50">
             <Label
-              htmlFor="bot-active"
+              htmlFor="followup-active"
               className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2"
             >
-              Agent Status
+              Follow-up Sequences
             </Label>
             <Select
-              value={settings.is_active ? "on" : "off"}
+              value={workflowConfig.followup_enabled ? "on" : "off"}
               onValueChange={(v) =>
-                setSettings({ ...settings, is_active: v === "on" })
+                setWorkflowConfig({ ...workflowConfig, followup_enabled: v === "on" })
               }
             >
               <SelectTrigger
                 className={cn(
                   "w-28 h-9 text-xs font-bold border-none shadow-none focus:ring-0",
-                  settings.is_active ? "text-green-500" : "text-destructive",
+                  workflowConfig.followup_enabled ? "text-green-500" : "text-destructive",
                 )}
               >
                 <SelectValue />
@@ -1331,102 +1635,90 @@ function AISettingsTab({ clientId }: { clientId: string }) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8 p-6 md:p-8">
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
-                Agent Identity
-              </Label>
-              <Input
-                className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 text-sm font-medium"
-                value={settings.name}
-                onChange={(e) =>
-                  setSettings({ ...settings, name: e.target.value })
-                }
-                placeholder="e.g. LeadNest Assistant"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                The name your AI will use when introducing itself.
-              </p>
-            </div>
-
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
-                  Creativity (Temperature)
-                </Label>
-                <Badge
-                  variant="outline"
-                  className="font-mono text-primary border-primary/20 bg-primary/5"
-                >
-                  {settings.temperature}
-                </Badge>
-              </div>
-              <div className="px-2">
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                  value={settings.temperature}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      temperature: parseFloat(e.target.value),
-                    })
-                  }
-                />
-                <div className="flex justify-between mt-2 px-1">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">
-                    Factual/Strict
-                  </span>
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">
-                    Creative/Human
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-2 mt-8">
-              <h4 className="text-xs font-bold flex items-center gap-2 text-primary">
-                <Zap className="h-3 w-3" /> Auto-Pilot Mode
-              </h4>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                When enabled, the AI will automatically respond to all incoming
-                WhatsApp messages using the instructions provided. You can still
-                intervene and send manual messages from the Inbox at any time.
-              </p>
-            </div>
+      <CardContent className="space-y-6 p-6 md:p-8">
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* 24h follow up */}
+          <div className="space-y-2">
+            <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
+              24-Hour Follow-up Template
+            </Label>
+            <Select
+              value={workflowConfig.followup_24h_template || "none_selected"}
+              onValueChange={(v) =>
+                setWorkflowConfig({ ...workflowConfig, followup_24h_template: v === "none_selected" ? "" : v })
+              }
+            >
+              <SelectTrigger className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 text-sm font-medium">
+                <SelectValue placeholder="Select 24h template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none_selected" className="text-muted-foreground">None (Disabled)</SelectItem>
+                {templates.map((t: any) => (
+                  <SelectItem key={t.id || t.name} value={t.name}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Sent 24 hours after a lead is created if they haven't responded.
+            </p>
           </div>
 
-          <div className="space-y-2 flex flex-col">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
-                System Instructions (Personality)
-              </Label>
-              <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full border">
-                <Clock className="h-2.5 w-2.5" />
-                Context Aware
-              </div>
-            </div>
-            <Textarea
-              className="flex-1 min-h-[300px] text-sm leading-relaxed bg-muted/20 border-border/50 focus:border-primary/50 font-medium resize-none p-4"
-              value={settings.system_prompt}
-              onChange={(e) =>
-                setSettings({ ...settings, system_prompt: e.target.value })
+          {/* 48h follow up */}
+          <div className="space-y-2">
+            <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
+              48-Hour Follow-up Template
+            </Label>
+            <Select
+              value={workflowConfig.followup_48h_template || "none_selected"}
+              onValueChange={(v) =>
+                setWorkflowConfig({ ...workflowConfig, followup_48h_template: v === "none_selected" ? "" : v })
               }
-              placeholder="Tell the AI how to behave, what to know about your business, and how to handle inquiries..."
-            />
-            <div className="flex items-center gap-2 mt-2">
-              <Badge className="text-[9px] bg-blue-500/10 text-blue-500 border-blue-500/20">
-                Pro Tip
-              </Badge>
-              <p className="text-[10px] text-muted-foreground">
-                Describe your products, pricing, and FAQs for better accuracy.
-              </p>
-            </div>
+            >
+              <SelectTrigger className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 text-sm font-medium">
+                <SelectValue placeholder="Select 48h template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none_selected" className="text-muted-foreground">None (Disabled)</SelectItem>
+                {templates.map((t: any) => (
+                  <SelectItem key={t.id || t.name} value={t.name}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Sent 48 hours after a lead is created if they haven't responded.
+            </p>
+          </div>
+
+          {/* 72h follow up */}
+          <div className="space-y-2">
+            <Label className="text-xs font-black uppercase tracking-widest text-primary/70">
+              72-Hour Follow-up Template
+            </Label>
+            <Select
+              value={workflowConfig.followup_72h_template || "none_selected"}
+              onValueChange={(v) =>
+                setWorkflowConfig({ ...workflowConfig, followup_72h_template: v === "none_selected" ? "" : v })
+              }
+            >
+              <SelectTrigger className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 text-sm font-medium">
+                <SelectValue placeholder="Select 72h template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none_selected" className="text-muted-foreground">None (Disabled)</SelectItem>
+                {templates.map((t: any) => (
+                  <SelectItem key={t.id || t.name} value={t.name}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Sent 72 hours after a lead is created if they haven't responded.
+            </p>
           </div>
         </div>
 
@@ -1434,20 +1726,20 @@ function AISettingsTab({ clientId }: { clientId: string }) {
           <div className="flex items-center gap-2 opacity-60">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Real-time syncing enabled
+              Updates sync with n8n instantly
             </p>
           </div>
           <Button
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={handleSaveWorkflow}
+            disabled={isSavingWorkflow}
             className="w-full sm:w-auto px-10 h-12 font-black text-sm shadow-xl shadow-primary/20 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            {isSaving ? (
+            {isSavingWorkflow ? (
               <RefreshCw className="h-4 w-4 animate-spin mr-3" />
             ) : (
               <CheckCheck className="h-5 w-5 mr-3" />
             )}
-            UPDATE AI AGENT
+            UPDATE FOLLOW-UP SETTINGS
           </Button>
         </div>
       </CardContent>
@@ -1814,15 +2106,14 @@ function SendMessageModal({
             application_id: bot.id,
             client_id: clientId,
             phoneNoId: bot.api_config?.phone_id,
-            type: (requiresMedia
-              ? headerFormat?.toLowerCase()
-              : messageType) as any,
+            type: messageType,
             name: templateName,
             language: selectedLanguage,
             mediaUrl: mediaUrl.trim() || undefined,
+            headerFormat: requiresMedia ? headerFormat?.toLowerCase() as any : undefined,
             bodyParams,
           },
-          bot.api_config?.api_key,
+          bot.api_config?.meta_access_token || bot.api_config?.api_key,
         );
         if (result.success) {
           toast({ title: "Message sent!" });
@@ -2180,442 +2471,319 @@ function SendMessageModal({
   );
 }
 
-/* ─── Create Template Modal ─── */
-function CreateTemplateModalWA({
+/* ─── Import Template Modal ─── */
+function ImportTemplateModalWA({
   open,
   onOpenChange,
   selectedAppId,
-  onCreated,
+  templates,
+  onImported,
 }: any) {
   const { toast } = useToast();
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("MARKETING");
-  const [language, setLanguage] = useState("en_US");
-  const [headerType, setHeaderType] = useState("NONE");
-  const [headerText, setHeaderText] = useState("");
-  const [body, setBody] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [remoteTemplates, setRemoteTemplates] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isImporting, setIsImporting] = useState<Record<string, boolean>>({});
 
-  const normalizedName = useMemo(
-    () => name.trim().toLowerCase().replace(/\s+/g, "_"),
-    [name],
-  );
-
-  const bodyVariables = useMemo(
-    () => Array.from(new Set(body.match(/\{\{\d+\}\}/g) || [])),
-    [body],
-  );
-
-  const previewSegments = useMemo(() => {
-    const previewText =
-      body.trim() ||
-      "Hello {{1}}, your request is ready. Reply with {{2}} if you need help.";
-    return previewText.split(/(\{\{\d+\}\})/g).filter(Boolean);
-  }, [body]);
-
-  const headerPreviewLabel = useMemo(() => {
-    if (headerType === "TEXT") return headerText.trim() || "Header text";
-    if (headerType === "IMAGE") return "Image header";
-    if (headerType === "VIDEO") return "Video header";
-    if (headerType === "AUDIO") return "Audio header";
-    if (headerType === "DOCUMENT") return "Document header";
-    return "No header";
-  }, [headerType, headerText]);
-
-  const reset = () => {
-    setName("");
-    setCategory("MARKETING");
-    setLanguage("en_US");
-    setHeaderType("NONE");
-    setHeaderText("");
-    setBody("");
-  };
-
-  const handleSubmit = async () => {
-    if (!name.trim() || !body.trim())
-      return toast({ title: "Name and Body required", variant: "destructive" });
-    setIsSubmitting(true);
+  const fetchRemoteTemplates = useCallback(async () => {
+    if (!selectedAppId) return;
+    setIsLoading(true);
+    setFetchError(null);
     try {
-      const components: any[] = [{ type: "BODY", text: body.trim() }];
-      if (headerType !== "NONE") {
-        const header: any = { type: "HEADER", format: headerType };
-        if (headerType === "TEXT") header.text = headerText.trim();
-        else header.example = { header_handle: [headerText.trim()] };
-        components.unshift(header);
-      }
-      await createWhatsAppTemplate(selectedAppId!, {
-        name: name.trim().toLowerCase().replace(/\s+/g, "_"),
-        category,
-        language,
-        components,
-      });
-      toast({ title: "Template submitted!" });
-      onCreated();
-      onOpenChange(false);
-      reset();
+      const data = await syncWhatsAppTemplates(selectedAppId);
+      setRemoteTemplates(data || []);
     } catch (err: any) {
+      setFetchError(err.message || "Failed to fetch templates");
       toast({
-        title: "Error",
+        title: "Error fetching templates",
         description: err.message,
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
+    }
+  }, [selectedAppId, toast]);
+
+  useEffect(() => {
+    if (open && selectedAppId) {
+      fetchRemoteTemplates();
+    }
+  }, [open, selectedAppId, fetchRemoteTemplates]);
+
+  const handleImport = async (tpl: any) => {
+    if (!selectedAppId) return;
+    setIsImporting((prev) => ({ ...prev, [tpl.name]: true }));
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: client } = await (supabase.from("clients" as any) as any)
+        .select("id")
+        .eq("user_id", user?.id)
+        .maybeSingle();
+
+      const { error } = await (
+        supabase.from("whatsapp_templates" as any) as any
+      )
+        .insert({
+          application_id: selectedAppId,
+          client_id: client?.id || null,
+          name: tpl.name,
+          category: tpl.category || "MARKETING",
+          language: tpl.language || "en_US",
+          components: tpl.components || [],
+          status: tpl.status || "approved",
+          created_by: user?.id,
+        });
+
+      if (error) throw error;
+
+      toast({ title: `Template "${tpl.name}" imported successfully!` });
+      onImported();
+    } catch (err: any) {
+      toast({
+        title: "Import failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting((prev) => ({ ...prev, [tpl.name]: false }));
     }
   };
 
+  const handleImportAll = async () => {
+    if (!selectedAppId) return;
+    const importable = remoteTemplates.filter(
+      (rt) => !templates.some((lt) => lt.name === rt.name)
+    );
+    if (importable.length === 0) return;
+
+    setIsLoading(true);
+    let successCount = 0;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: client } = await (supabase.from("clients" as any) as any)
+        .select("id")
+        .eq("user_id", user?.id)
+        .maybeSingle();
+
+      for (const tpl of importable) {
+        try {
+          const { error } = await (
+            supabase.from("whatsapp_templates" as any) as any
+          )
+            .insert({
+              application_id: selectedAppId,
+              client_id: client?.id || null,
+              name: tpl.name,
+              category: tpl.category || "MARKETING",
+              language: tpl.language || "en_US",
+              components: tpl.components || [],
+              status: tpl.status || "approved",
+              created_by: user?.id,
+            });
+
+          if (!error) successCount++;
+        } catch (err) {
+          console.error("Bulk import failed for", tpl.name, err);
+        }
+      }
+
+      toast({ title: `Imported ${successCount} templates successfully!` });
+      onImported();
+    } catch (err: any) {
+      toast({
+        title: "Bulk import error",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredTemplates = remoteTemplates.filter((t) =>
+    (t.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) reset();
-        onOpenChange(v);
-      }}
-    >
-      <DialogContent className="w-[94vw] max-w-6xl overflow-hidden border-slate-200/70 bg-slate-50 p-0 shadow-2xl sm:w-[92vw] md:w-[90vw] will-change-transform transform-gpu">
-        <div className="max-h-[90vh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 px-4 py-4 text-white sm:px-6 sm:py-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-emerald-100">
-                  <Eye className="h-3.5 w-3.5" />
-                  Live preview
-                </div>
-                <DialogTitle className="text-2xl font-semibold tracking-tight text-white">
-                  Create Template
-                </DialogTitle>
-                <DialogDescription className="max-w-2xl text-sm text-slate-300">
-                  Build a polished WhatsApp template with a real-time preview so
-                  you can check the final look before submitting.
-                </DialogDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[94vw] max-w-4xl border-slate-200 bg-slate-50 p-0 shadow-2xl rounded-3xl overflow-hidden">
+        <DialogHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 px-6 py-5 text-white">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-100">
+                <Download className="h-3 w-3" />
+                WhapiHub Integration
               </div>
-
-              <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-200 md:flex">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-200">
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-medium text-white">Approval-ready layout</p>
-                  <p className="text-slate-300">See the message structure live.</p>
-                </div>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
-            <div className="min-w-0 space-y-5 border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:border-b-0 lg:border-r">
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-                <div className="min-w-0 space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Template name
-                  </Label>
-                  <Input
-                    placeholder="welcome_msg"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-base shadow-sm transition-colors focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
-                  />
-                  <p className="max-w-md text-xs leading-5 text-slate-500">
-                    Use lowercase letters, numbers, and underscores for a clean
-                    SaaS-style naming convention.
-                  </p>
-                </div>
-
-                <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                    <span>Template health</span>
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                    >
-                      Ready
-                    </Badge>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm">
-                    <div className="flex items-start justify-between gap-3 rounded-xl bg-white/70 px-3 py-2">
-                      <span className="text-slate-600">Slug</span>
-                      <span className="max-w-[15rem] break-all text-right font-mono text-xs text-slate-900 sm:max-w-[18rem]">
-                        {normalizedName || "welcome_msg"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-slate-600">
-                      <span>Variables</span>
-                      <span className="font-medium text-slate-900">
-                        {bodyVariables.length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-slate-600">
-                      <span>Status</span>
-                      <span className="flex items-center gap-1 font-medium text-emerald-700">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Draft
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Category
-                  </Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MARKETING">Marketing</SelectItem>
-                      <SelectItem value="UTILITY">Utility</SelectItem>
-                      <SelectItem value="AUTHENTICATION">Auth</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Language
-                  </Label>
-                  <Select value={language} onValueChange={setLanguage}>
-                    <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-sm focus:ring-emerald-500">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en_US">English (US)</SelectItem>
-                      <SelectItem value="hi">Hindi</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Header
-                    </Label>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Add an optional message header to make the template more engaging.
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700"
-                  >
-                    {headerType}
-                  </Badge>
-                </div>
-                <Select value={headerType} onValueChange={setHeaderType}>
-                  <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm focus:ring-emerald-500">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NONE">None</SelectItem>
-                    <SelectItem value="TEXT">Text</SelectItem>
-                    <SelectItem value="IMAGE">Image</SelectItem>
-                    <SelectItem value="VIDEO">Video</SelectItem>
-                    <SelectItem value="AUDIO">Audio</SelectItem>
-                    <SelectItem value="DOCUMENT">Doc</SelectItem>
-                  </SelectContent>
-                </Select>
-                {headerType !== "NONE" && (
-                  <Input
-                    className="mt-3 h-12 rounded-2xl border-slate-200 bg-white shadow-sm focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
-                    placeholder="Header text or media URL"
-                    value={headerText}
-                    onChange={(e) => setHeaderText(e.target.value)}
-                  />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Body
-                  </Label>
-                  <span className="text-xs text-slate-500">
-                    {body.length}/1024 characters
-                  </span>
-                </div>
-                <Textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={7}
-                  placeholder="Hello {{1}}, welcome to your new workspace."
-                  className="min-h-[180px] rounded-3xl border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-slate-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500"
-                />
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
-                  <p className="font-medium">Quick tip</p>
-                  <p className="mt-1 text-xs leading-5 text-emerald-800/90">
-                    Keep the first line clear and friendly. Variables like
-                    <span className="mx-1 rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-emerald-700">
-                      {'{{1}}'}
-                    </span>
-                    are highlighted in the preview so you can see exactly how
-                    personalization will land.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-slate-900">
-                    Template snapshot
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {normalizedName || "welcome_msg"} · {bodyVariables.length} dynamic field(s)
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="rounded-full bg-slate-200 text-slate-700 hover:bg-slate-200">
-                    {category}
-                  </Badge>
-                  <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
-                    {language === "en_US" ? "English (US)" : language}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            <div className="min-w-0 space-y-5 bg-slate-100 px-4 py-5 sm:px-6 sm:py-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Live preview</h3>
-                  <p className="text-sm text-slate-500">
-                    Updated instantly as you type.
-                  </p>
-                </div>
-                <Badge className="rounded-full bg-slate-900 px-3 py-1 text-xs text-white hover:bg-slate-900">
-                  Draft mode
-                </Badge>
-              </div>
-
-              <div className="mx-auto w-full max-w-[22rem] overflow-x-auto rounded-[2rem] border border-slate-200 bg-slate-950 p-2.5 shadow-2xl sm:max-w-[24rem] lg:max-w-sm xl:max-w-md">
-                <div className="rounded-[1.65rem] bg-[#ECE5DD] p-3">
-                  <div className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-black/5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-sm font-semibold text-white shadow-md shadow-emerald-500/30">
-                        WA
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          WhatsApp Business
-                        </p>
-                        <p className="text-xs text-slate-500">Template preview</p>
-                      </div>
-                    </div>
-                    <div className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-medium text-emerald-700">
-                      Draft
-                    </div>
-                  </div>
-
-                  <div className="ml-auto w-full max-w-full overflow-x-auto rounded-[1.5rem] rounded-tr-md bg-white p-3.5 shadow-sm ring-1 ring-black/5 sm:p-4">
-                    <div className="flex items-start justify-between gap-3 text-[11px] text-slate-500">
-                      <span className="font-medium text-emerald-600">
-                        {category}
-                      </span>
-                      <span className="max-w-[55%] break-all font-mono text-[10px] text-slate-400">
-                        {normalizedName || "welcome_msg"}
-                      </span>
-                    </div>
-
-                    {headerType !== "NONE" && (
-                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                          <Phone className="h-3.5 w-3.5 text-emerald-600" />
-                          Header preview
-                        </div>
-                        <p className="mt-2 break-all text-sm font-medium text-slate-900">
-                          {headerPreviewLabel}
-                        </p>
-                        {headerType === "TEXT" && headerText.trim() && (
-                          <p className="mt-1 break-all text-xs text-slate-500">
-                            {headerText.trim()}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-3 overflow-x-auto break-words whitespace-pre-wrap text-sm leading-6 text-slate-800">
-                      {previewSegments.map((segment, index) =>
-                        /\{\{\d+\}\}/.test(segment) ? (
-                          <span
-                            key={`${segment}-${index}`}
-                            className="mx-0.5 inline-block max-w-full break-all rounded-md bg-emerald-50 px-1.5 py-0.5 font-mono text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"
-                          >
-                            {segment}
-                          </span>
-                        ) : (
-                          <span key={`${segment}-${index}`} className="break-all">
-                            {segment}
-                          </span>
-                        ),
-                      )}
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Badge variant="secondary" className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-100">
-                        {language === "en_US" ? "English (US)" : language}
-                      </Badge>
-                      <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
-                        {bodyVariables.length} variable{bodyVariables.length === 1 ? "" : "s"}
-                      </Badge>
-                      <Badge variant="outline" className="rounded-full border-slate-300 text-slate-600">
-                        {headerType === "NONE" ? "No header" : headerType}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-end text-[11px] text-slate-500">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 shadow-sm">
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                      Live sync enabled
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Personalization
-                  </p>
-                  <p className="mt-2 text-sm text-slate-700">
-                    Variables render clearly so your team can spot dynamic fields fast.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Premium feel
-                  </p>
-                  <p className="mt-2 text-sm text-slate-700">
-                    Clean spacing, gradients, and hierarchy make the modal feel SaaS-ready.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Approval ready
-                  </p>
-                  <p className="mt-2 text-sm text-slate-700">
-                    The structure mirrors how reviewers see the template in WhatsApp.
-                  </p>
-                </div>
-              </div>
+              <DialogTitle className="text-xl font-bold tracking-tight text-white">
+                Import Templates
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-300">
+                Browse and import pre-approved WhatsApp templates from WhapiHub into your workspace.
+              </DialogDescription>
             </div>
           </div>
+        </DialogHeader>
 
-          <DialogFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-full px-5 sm:w-auto">
-              Cancel
-            </Button>
-            <Button
-              disabled={isSubmitting}
-              onClick={handleSubmit}
-              className="w-full rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-6 text-white shadow-lg shadow-emerald-500/25 transition-transform hover:scale-[1.01] hover:from-emerald-600 hover:to-green-700 sm:w-auto"
-            >
-              {isSubmitting ? "Submitting..." : "Create Template"}
-            </Button>
-          </DialogFooter>
+        <div className="p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search remote templates..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-10 rounded-xl bg-white border-slate-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500 text-sm"
+              />
+            </div>
+
+            {remoteTemplates.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportAll}
+                disabled={isLoading || !remoteTemplates.some((rt) => !templates.some((lt) => lt.name === rt.name))}
+                className="h-10 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs shrink-0"
+              >
+                <Download className="h-3.5 w-3.5 mr-2" />
+                Import All New Templates
+              </Button>
+            )}
+          </div>
+
+          <Card className="border-slate-200/60 shadow-xl overflow-hidden rounded-2xl bg-white">
+            <div className="max-h-[50vh] overflow-y-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/70 border-b border-slate-100 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="font-bold text-xs text-slate-500 uppercase tracking-wider py-4">Name</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500 uppercase tracking-wider py-4">Category</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500 uppercase tracking-wider py-4">Language</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500 uppercase tracking-wider py-4">Status</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500 uppercase tracking-wider py-4 text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <p className="text-sm font-semibold text-slate-500">Fetching templates from Meta Business Manager...</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredTemplates.length > 0 ? (
+                    filteredTemplates.map((tpl: any) => {
+                      const isAlreadyImported = templates.some(
+                        (lt) => lt.name.toLowerCase() === tpl.name.toLowerCase()
+                      );
+                      const importing = isImporting[tpl.name];
+
+                      return (
+                        <TableRow key={tpl.name} className="hover:bg-slate-50/50 border-b border-slate-100">
+                          <TableCell className="py-4 font-mono text-xs font-semibold text-slate-800 break-all">{tpl.name}</TableCell>
+                          <TableCell className="py-4 text-xs font-medium text-slate-600">
+                            <Badge variant="secondary" className="rounded-full bg-slate-100 text-slate-600 uppercase text-[9px] tracking-wider font-bold">
+                              {tpl.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-4 text-xs text-slate-600 font-mono">{tpl.language}</TableCell>
+                          <TableCell className="py-4 text-xs font-medium">
+                            <Badge className="rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px] uppercase font-black tracking-wider">
+                              {tpl.status || "approved"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-4 text-right">
+                            {isAlreadyImported ? (
+                              <Badge className="bg-slate-100 text-slate-500 border border-slate-200/60 rounded-full text-[10px] py-1 px-2.5 font-bold uppercase tracking-wider">
+                                <Check className="h-3 w-3 mr-1 inline-block" /> Imported
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                disabled={importing}
+                                onClick={() => handleImport(tpl)}
+                                className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 shadow-md shadow-emerald-600/10 active:scale-95 transition-all"
+                              >
+                                {importing ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                ) : (
+                                  <Download className="h-3 w-3 mr-1" />
+                                )}
+                                Import
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : fetchError ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-3 max-w-md mx-auto">
+                          <AlertCircle className="h-10 w-10 text-red-400" />
+                          {fetchError.includes("META_CONFIG_MISSING") ? (
+                            <>
+                              <p className="font-bold text-sm text-red-600">Meta Configuration Required</p>
+                              <div className="text-left bg-red-50 border border-red-200 rounded-xl p-4 text-xs text-red-700 space-y-2 w-full">
+                                <p className="font-semibold">To import templates, you need to add your Meta credentials to the bot:</p>
+                                <ol className="list-decimal list-inside space-y-1 ml-1">
+                                  <li>Go to <strong>Admin Dashboard → WhatsApp Bots</strong></li>
+                                  <li>Click <strong>Config</strong> on your bot</li>
+                                  <li>Enter your <strong>Meta Access Token</strong> (starts with EAA...)</li>
+                                  <li>Enter your <strong>Meta WABA ID</strong> (e.g. 1429354545450670)</li>
+                                  <li>Click <strong>Save Changes</strong></li>
+                                </ol>
+                                <p className="pt-1 text-red-500 italic">Or run this SQL in Supabase SQL Editor:</p>
+                                <code className="block bg-red-100 text-[10px] p-2 rounded-lg break-all font-mono">
+                                  UPDATE whatsapp_applications SET api_config = api_config || '{`{`}"waba_id":"YOUR_WABA_ID","meta_access_token":"YOUR_EAA_TOKEN"{`}`}'::jsonb WHERE provider_type = 'api';
+                                </code>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-bold text-sm text-red-600">Failed to fetch templates</p>
+                              <p className="text-xs text-red-500">{fetchError}</p>
+                            </>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={fetchRemoteTemplates}
+                            className="mt-2 rounded-xl border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-2 text-slate-400">
+                          <AlertCircle className="h-10 w-10 text-slate-300" />
+                          <p className="font-bold text-sm">No remote templates found</p>
+                          <p className="text-xs text-slate-500">Check that templates exist in your Meta Business Manager.</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
         </div>
+
+        <DialogFooter className="border-t border-slate-200 bg-white px-6 py-4 flex items-center justify-end">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl px-5 font-bold text-slate-600 hover:bg-slate-100 text-xs"
+          >
+            Close Dialog
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

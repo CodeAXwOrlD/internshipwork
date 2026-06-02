@@ -31,6 +31,7 @@ export interface SendWhatsAppMessageParams {
   application_id: string;
   client_id?: string; // Optional for admin tests
   baseUrl?: string;
+  headerFormat?: "image" | "video" | "document" | "audio";
 }
 
 export type WhatsAppMediaType = "image" | "video" | "document" | "audio";
@@ -89,9 +90,10 @@ export async function sendWhatsAppMessage(
       return { success: false, message: "API configuration missing" };
     }
 
+    const cleanTo = params.to.replace(/[+\s-]/g, "");
     const messageType = params.type || "text";
     const requestBody: any = {
-      to: params.to,
+      to: cleanTo,
       phoneNoId: params.phoneNoId,
       application_id: params.application_id,
       client_id: params.client_id,
@@ -99,18 +101,40 @@ export async function sendWhatsAppMessage(
     };
 
     if (messageType === "template") {
+      const components: any[] = [];
+
+      // Add media header component if mediaUrl is provided
+      if (params.mediaUrl) {
+        const mediaParamType = params.headerFormat || "image";
+        components.push({
+          type: "header",
+          parameters: [
+            {
+              type: mediaParamType,
+              [mediaParamType]: {
+                link: params.mediaUrl,
+                ...(mediaParamType === "document" && params.attachment?.fileName
+                  ? { filename: params.attachment.fileName }
+                  : {}),
+              },
+            },
+          ],
+        });
+      }
+
+      // Add body parameters component
+      components.push({
+        type: "body",
+        parameters: (params.bodyParams || []).map((value) => ({
+          type: "text",
+          text: value,
+        })),
+      });
+
       requestBody.template = {
         name: params.name,
         language: { code: params.language || "en_US" },
-        components: [
-          {
-            type: "body",
-            parameters: (params.bodyParams || []).map((value) => ({
-              type: "text",
-              text: value,
-            })),
-          },
-        ],
+        components,
       };
     } else if (["image", "video", "document", "audio"].includes(messageType)) {
       requestBody.mediaUrl = params.mediaUrl;
@@ -169,7 +193,7 @@ export async function sendWhatsAppMessage(
                 ? null
                 : params.application_id,
             client_id: params.client_id,
-            phone_number: params.to,
+            phone_number: cleanTo,
             message_content: logContent,
             message_type: params.type || "text",
             template_name: params.name || null,
@@ -400,7 +424,9 @@ export async function createWhatsAppTemplate(
 }
 
 /**
- * Fetches templates from the real WhatsApp API and syncs them to our local database.
+ * Fetches templates from Meta's Graph API and syncs them to local DB.
+ * WhapiHub has no template listing endpoint — templates come from Meta directly.
+ * Requires waba_id + meta_access_token in the bot's api_config.
  */
 export async function syncWhatsAppTemplates(applicationId: string) {
   if (applicationId === "00000000-0000-0000-0000-000000000000") {
@@ -426,57 +452,114 @@ export async function syncWhatsAppTemplates(applicationId: string) {
     bot = singularData;
   }
 
-  if (!bot || !bot.api_config?.api_key) {
+  if (!bot || !bot.api_config) {
     throw new Error("Bot API configuration missing or invalid");
   }
 
-  // ─── IMPORTANT NOTE FOR FUTURE DEVELOPERS ───────────────────────────────────
-  // WhapiHub does NOT have a GET templates endpoint.
-  // Templates synced here come from local DB only.
-  // To get approved templates, check Meta Business Manager directly.
-  // If provider changes, update this function with new provider's GET endpoint.
-  // ─────────────────────────────────────────────────────────────────────────────
-  console.log(
-    "📋 Fetching templates from local DB only — WhapiHub has no list templates endpoint",
-  );
-  return [];
+  const { waba_id, meta_access_token, api_key } = bot.api_config;
+  const token = meta_access_token || (api_key?.startsWith("EAA") ? api_key : null);
 
-  //   // Get current user for attribution
-  //   const { data: { user } } = await supabase.auth.getUser();
+  if (!waba_id || !token) {
+    throw new Error(
+      "META_CONFIG_MISSING: To import templates, configure your Meta Access Token and WABA ID in the Admin WhatsApp Bot Config panel (Admin → WhatsApp Bots → Config → Meta Access Token & Meta WABA ID)."
+    );
+  }
 
-  //   // Find linked client
-  //   const { data: client } = await (supabase
-  //     .from("clients" as any) as any)
-  //     .select("id")
-  //     .eq("user_id", user?.id)
-  //     .maybeSingle();
+  try {
+    const metaUrl = `https://graph.facebook.com/v20.0/${waba_id}/message_templates?limit=200&fields=name,status,category,language,components`;
+    const response = await fetch(metaUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
 
-  //   // Update local DB (upsert based on name)
-  //   for (const tpl of externalTemplates) {
-  //     // Only sync approved templates to avoid draft errors
-  //     const status = (tpl.status || "approved").toLowerCase();
-  //     if (status !== 'approved' && status !== 'ready') continue;
+    const responseText = await response.text();
+    console.log("📋 Meta Graph API templates response:", responseText.slice(0, 600));
 
-  //     const tplName = (tpl.name || tpl.template_name || "").trim();
-  //     if (!tplName) continue;
+    if (!response.ok) {
+      console.warn("Failed to fetch templates from Meta (status", response.status, "):", responseText);
+      return [];
+    }
 
-  //     const tplLang = (tpl.language || tpl.language_code || "en_US").trim();
+    let result: any = {};
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      console.warn("Meta template response is not JSON:", responseText);
+      return [];
+    }
 
-  //     const { error: upsertError } = await (supabase.from("whatsapp_templates" as any) as any).upsert({
-  //       application_id: applicationId,
-  //       client_id: client?.id || null,
-  //       name: tplName,
-  //       category: tpl.category || 'MARKETING',
-  //       language: tplLang, // Store exactly what the API says
-  //       components: tpl.components || [],
-  //       status: status,
-  //       created_by: user?.id
-  //     }, { onConflict: 'application_id,name' });
+    // Meta returns templates under result.data
+    let externalTemplates: any[] = [];
+    if (Array.isArray(result)) {
+      externalTemplates = result;
+    } else if (Array.isArray(result.waba_templates)) {
+      externalTemplates = result.waba_templates;
+    } else if (Array.isArray(result.templates)) {
+      externalTemplates = result.templates;
+    } else if (Array.isArray(result.data)) {
+      externalTemplates = result.data;
+    } else if (Array.isArray(result.items)) {
+      externalTemplates = result.items;
+    } else {
+      // Last resort: look for any array value in the response object
+      const firstArray = Object.values(result).find((v) => Array.isArray(v));
+      if (firstArray) externalTemplates = firstArray as any[];
+    }
 
-  //     if (upsertError) console.warn(`Failed to sync template ${tplName}:`, upsertError);
-  //   }
+    console.log(`📋 Found ${externalTemplates.length} templates from Meta`);
 
-  //   return externalTemplates;
+    if (externalTemplates.length === 0) return [];
+
+    // Get current user for attribution
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Find linked client
+    const { data: client } = await (supabase
+      .from("clients" as any) as any)
+      .select("id")
+      .eq("user_id", user?.id)
+      .maybeSingle();
+
+    // Upsert all templates into local DB (sync all statuses)
+    for (const tpl of externalTemplates) {
+      const rawStatus = (tpl.status || "approved");
+      const status = rawStatus.toLowerCase();
+
+      const tplName = (tpl.name || tpl.template_name || tpl.elementName || "").trim();
+      if (!tplName) continue;
+
+      const tplLang = (
+        tpl.language ||
+        tpl.language_code ||
+        tpl.languageCode ||
+        (Array.isArray(tpl.components) ? undefined : undefined) ||
+        "en_US"
+      ).trim();
+
+      const tplCategory = (tpl.category || tpl.templateType || "MARKETING").toUpperCase();
+
+      const { error: upsertError } = await (supabase.from("whatsapp_templates" as any) as any).upsert({
+        application_id: applicationId,
+        client_id: client?.id || null,
+        name: tplName,
+        category: tplCategory,
+        language: tplLang,
+        components: tpl.components || [],
+        status: status,
+        created_by: user?.id,
+      }, { onConflict: 'application_id,name' });
+
+      if (upsertError) console.warn(`Failed to sync template "${tplName}":`, upsertError);
+    }
+
+    return externalTemplates;
+  } catch (err) {
+    console.error("syncWhatsAppTemplates error:", err);
+    return [];
+  }
 }
 
 /**
